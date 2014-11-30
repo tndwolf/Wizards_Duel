@@ -25,7 +25,7 @@
 	</dungeon>
 	<blueprints>
 		<blueprint id="bp_ezekiel">
-			<output texture="SpriteSheet_Exekiel01.png" defaultX="0" defaultY="96" defaultW="32" defaultH="32">
+			<output texture="test_spritesheets.png" defaultX="0" defaultY="96" defaultW="32" defaultH="32">
 				<animation name="CAST1">
 					<frame x="31" y="144" width="32" height="32" duration="100"/>
 					<frame x="63" y="144" width="32" height="32" duration="100"/>
