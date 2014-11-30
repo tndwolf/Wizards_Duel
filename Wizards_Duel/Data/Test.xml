@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+	Dear user, thank you for taking the time to take a look at this file.
+	If you wanto to modify the data contained herein please do so and feel
+	free to experiment! If you manage to find some exciting new combination
+	or modification please share your discovery with us!
+	You will find a brief manual for modders inside the documentation folder.
+-->
+<module>
+	<dungeon>
+		<!-- #=WALL, .=FLOOR, O=PIT, by defaul everything fills up with walls -->
+		<map type="STATIC" seed="0" gridWidth="16" gridHeight="16">
+			################
+			#OOOOOOOOOOOOOOO
+			#....###.......O
+			#.######.......O
+			#.######.......O
+			#..........####O
+			#.####......O##O
+			#.##OO..#######O
+			#.........##...O
+			#..O#O.........O
+			#OOOOOOOOOOOOOOO
+		</map>
+	</dungeon>
+	<blueprints>
+		<blueprint id="bp_ezekiel">
+			<output texture="SpriteSheet_Exekiel01.png" defaultX="0" defaultY="96" defaultW="32" defaultH="32">
+				<animation name="CAST1">
+					<frame x="31" y="144" width="32" height="32" duration="100"/>
+					<frame x="63" y="144" width="32" height="32" duration="100"/>
+					<frame x="31" y="144" width="32" height="32" duration="100"/>
+					<frame x="63" y="144" width="32" height="32" duration="100"/>
+					<frame x="31" y="144" width="32" height="32" duration="100"/>
+					<frame x="63" y="144" width="32" height="32" duration="100"/>
+					<frame x="0" y="96" width="32" height="32" duration="10"/>
+				</animation>
+				<animation name="SHIFT">
+					<frame x="0" y="96" width="32" height="32" duration="50"/>
+					<frame x="32" y="96" width="32" height="32" duration="150"/>
+					<frame x="0" y="96" width="32" height="32" duration="100"/>
+					<frame x="32" y="96" width="32" height="32" duration="150"/>
+					<frame x="0" y="96" width="32" height="32" duration="50"/>
+				</animation>
+			</output>
+		</blueprint>
+	</blueprints>
+	<page id="page_0">
+		<worldView width="800" height="480" cellWidth="64" cellHeight="64">
+			<!--backgroundLayer blend="ALPHA" texture="test_floor.png" type="UNDEFINED"/-->
+			<tiledLayer blend="ALPHA" mask="tilemask_floor_01" maskBlend="ALPHA" name="FLOOR" scale="0.5" texture="test_floor.png" tileScale="2"/>
+			<!--tiledLayer blend="ALPHA" mask="tilemask_wall_facing_01" maskBlend="ALPHA" name="WALL-FACING" tileScale="1"/-->
+			<objectsLayer blend="ALPHA" scale="2"/>
+			<tiledLayer blend="ALPHA" mask="tilemask_wall_shadow_01" maskBlend="ALPHA" name="WALL-SHADOW" tileScale="1"/>
+			<lightLayer ambientRed="128" ambientGreen="128" ambientBlue="128" blend="MULTIPLY"/>
+		</worldView>
+		<icon x="16" y="32" u="0" v="0" width="32" height="32" scale="2" texture="SpriteSheet_Exekiel01.png" />
+	</page>
+	<tileMasks defaultX="32" defaultY="0" defaultW="32" defaultH="32" id="tilemask_floor_01" texture="test_mask_wall.png">
+		<tile x="0" y="0" w="32" h="32" descr="floor">
+			<condition dx="0" dy="0" value="."/>
+		</tile>
+		<tile x="0" y="64" w="32" h="32"  descr="single pit-front">
+			<condition dx="0" dy="-1" value="."/>
+			<condition dx="0" dy="0" value="O"/>
+		</tile>
+		<tile x="0" y="64" w="32" h="32"  descr="single pit-front wall">
+			<condition dx="0" dy="-1" value="#"/>
+			<condition dx="0" dy="0" value="O"/>
+		</tile>
+		<tile x="64" y="64" w="32" h="32"  descr="single pit">
+			<condition dx="0" dy="0" value="O"/>
+		</tile>
+		<tile x="224" y="192" w="32" h="32" descr="wall-front">
+			<condition dx="0" dy="0" value="#"/>
+			<condition dx="0" dy="1" value="."/>
+		</tile>
+		<tile x="128" y="0" w="32" h="32" descr="wall">
+			<condition dx="0" dy="0" value="#"/>
+		</tile>
+	</tileMasks>
+
+	<tileMasks defaultX="0" defaultY="0" defaultW="64" defaultH="64" id="tilemask_wall_shadow_01" texture="test_mask_wall.png">
+		<tile x="128" y="16" dy="32" w="64" h="32" descr="wall front single (peak)">
+			<condition dx="0" dy="0" value="."/>
+			<condition dx="0" dy="1" value="#"/>
+		</tile>
+		<tile x="128" y="16" dy="32" w="64" h="32" descr="wall front single (peak)">
+			<condition dx="0" dy="0" value="O"/>
+			<condition dx="0" dy="1" value="#"/>
+		</tile>
+	</tileMasks>
+</module>
