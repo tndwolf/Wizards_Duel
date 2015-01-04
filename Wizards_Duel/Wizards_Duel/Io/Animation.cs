@@ -53,6 +53,46 @@ namespace WizardsDuel.Io
 		}
 	}
 
+	public class AttractAnimation: Animation {
+		private float strength;
+		private float strengthX;
+		private float strengthY;
+		private Vector2f target;
+		private const float DESTROY_RADIUS = 24f;
+
+		public AttractAnimation(Vector2f source, Vector2f target, float strength, bool deleteOnReach = true) {
+			this.DeleteOnReach = deleteOnReach;
+			var dx = target.X - source.X;
+			var dy = target.Y - source.Y;
+			var distance = (float)Math.Sqrt (dx * dx + dy * dy);
+			this.strength = strength;
+			this.strengthX = strength * dx / distance;
+			this.strengthY = strength * dy / distance;
+			this.target = target;
+		}
+
+		public bool DeleteOnReach { get; set; }
+
+		override public void Update(Widget parent) {
+			var dx = this.target.X - parent.X;
+			var dy = this.target.Y - parent.Y;
+			/*var acceleration = new Vector2f (
+				Math.Sign(dx) * this.strengthX,
+				Math.Sign(dy) * this.strengthY
+			);*/
+			var distance = (float)Math.Sqrt (dx * dx + dy * dy);
+			var acceleration = new Vector2f (
+				this.strength * dx / (distance*distance),
+				this.strength * dy / (distance*distance)
+			);
+			((Particle)parent).Accelerate (acceleration, IO.GetDelta ());
+			if (this.DeleteOnReach) {
+				if (distance < DESTROY_RADIUS)
+					((Particle)parent).TTL = 0;
+			}
+		}
+	}
+
 	public class ColorAnimation : Animation {
 		private int endTime = 0;
 		private int refTime = 0;

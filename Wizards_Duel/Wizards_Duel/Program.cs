@@ -56,7 +56,8 @@ namespace WizardsDuel
 			var simulator = new Simulator (out tm);
 			tm.EnableGrid(showingGrid);
 
-			simulator.AddLight (400, 240, 200, new Color(254, 250, 235));
+			//simulator.AddLight (400, 240, 200, new Color(254, 250, 235));
+			simulator.AddLight (Simulator.PLAYER_ID, 200, new Color(254, 250, 235));
 			IO.PlayMusic ("test1");
 			while (true) {
 				var inputs = IO.GetInputs ();

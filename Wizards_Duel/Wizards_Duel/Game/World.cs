@@ -61,6 +61,31 @@ namespace WizardsDuel.Game
 			this.SetTileTemplate("#", tt);
 		}
 
+		/// <summary>
+		/// Returns the ID of the object at x, y if any, null otherwise
+		/// </summary>
+		/// <param name="x">The x coordinate.</param>
+		/// <param name="y">The y coordinate.</param>
+		public string GetObjectAt(int x, int y) {
+			foreach (var entity in this.entities) {
+				if (entity.Value.X == x && entity.Value.Y == y) {
+					return entity.Key;
+				}
+			}
+			return null;
+		}
+
+		public string GetObjectAt(int x, int y, out Entity result) {
+			foreach (var entity in this.entities) {
+				if (entity.Value.X == x && entity.Value.Y == y) {
+					result = entity.Value;
+					return entity.Key;
+				}
+			}
+			result = null;
+			return null;
+		}
+
 		public Tile GetTile(int x, int y) {
 			return this.map [y, x];
 		}

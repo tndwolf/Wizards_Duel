@@ -357,14 +357,13 @@ namespace WizardsDuel.Io
 	public class Light {
 		private Color color = new Color(255, 255, 255);
 		private Vector2f position = new Vector2f(0f, 0f);
-		public float radius = 100.0f;
 
 		public Light(Vector2f center, float radius, Color color) {
 			center.X -= radius;
 			center.Y -= radius;
 			this.color = color;
 			this.position = center;
-			this.radius = radius;
+			this.Radius = radius;
 		}
 
 		public Color Color {
@@ -372,18 +371,38 @@ namespace WizardsDuel.Io
 			set { this.color = value; }
 		}
 
+		public void DrawWithOffset(RenderTarget target, Texture texture, float x, float y) {
+			var circle = new CircleShape (this.Radius);
+			circle.Texture = texture;
+			circle.FillColor = this.Color;
+			if (Parent != null) {
+				circle.Position = new Vector2f (Parent.CenterX - x - Radius / 2, Parent.CenterY - y - Radius / 2);
+				if (Parent.ToBeDeleted) {
+					this.Radius /= 1.5f;
+				}
+			} else {
+				circle.Position = new Vector2f (this.position.X - x, this.position.Y - y);
+			}
+			target.Draw(circle);
+		}
+
+		public OutObject Parent { 
+			get;
+			set;
+		}
+
 		public Vector2f Position {
 			get { return this.position; }
-			set { value.X -= radius / 2; value.Y -= radius / 2; this.position = value; }
+			set { value.X -= Radius / 2; value.Y -= Radius / 2; this.position = value; }
 		}
 
 		public float Radius {
-			get { return this.radius; }
-			set { this.radius = value; }
+			get;
+			set;
 		}
 
 		public void SetPosition(float cx, float cy) {
-			this.position = new Vector2f (cx - this.radius / 2, cy - this.radius / 2);
+			this.position = new Vector2f (cx - this.Radius / 2, cy - this.Radius / 2);
 		}
 	}
 
@@ -405,9 +424,10 @@ namespace WizardsDuel.Io
 			this.Blend = new RenderStates (BlendMode.Add);
 		}
 
-		public void AddLight(float x, float y, float radius, Color color) {
+		public Light AddLight(float x, float y, float radius, Color color) {
 			var light = new Light (new Vector2f (x, y), radius, color);
 			this.lights.Add (light);
+			return light;
 		}
 
 		public Color AmbientLight {
@@ -415,15 +435,25 @@ namespace WizardsDuel.Io
 			set;
 		}
 
+		public void DeleteLight(Light light) {
+			this.lights.Remove (light);
+		}
+
 		override public void Draw(RenderTarget target) {
 			this.layerTexture.Clear (this.AmbientLight);
+			//var buffPosition = new Vector2f ();
 			foreach (var light in this.lights) {
-				var circle = new CircleShape (light.radius);
+				light.DrawWithOffset (this.layerTexture, this.lightTexture, this.center.X, this.center.Y);
+				/*var circle = new CircleShape (light.Radius);
 				circle.FillColor = light.Color;
 				circle.Texture = this.lightTexture;
-				circle.Position = light.Position;
-				this.layerTexture.Draw (circle);
+				//circle.Position = light.Position;
+				//buffPosition.X = light.Position.X + this.center.X;
+				//buffPosition.Y = light.Position.Y + this.center.Y;
+				circle.Position = buffPosition;
+				this.layerTexture.Draw (circle);*/
 			}
+			this.lights.RemoveAll (x => x.Radius < 2);
 			this.layerTexture.Display ();
 			//this.lightSprite = new Sprite (this.layerTexture.Texture);
 			//this.layerSprite.Scale = this.Scale;
@@ -647,10 +677,12 @@ namespace WizardsDuel.Io
 		}
 
 		public void DeleteObject(OutObject obj) {
+			obj.ToBeDeleted = true;
 			this.objects.Remove (obj);
 		}
 
 		override public void Draw(RenderTarget target) {
+			this.objects.Sort ();
 			this.layerTexture.Clear (Color.Transparent);
 			foreach (var obj in this.objects) {
 				obj.DrawWithOffset (this.layerTexture, this.center.X, this.center.Y);

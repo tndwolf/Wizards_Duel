@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using WizardsDuel.Utils;
+using WizardsDuel.Io;
 
 namespace WizardsDuel.Game
 {
@@ -24,11 +25,13 @@ namespace WizardsDuel.Game
 	{
 		Simulator simulator;
 
+		bool canAddEvents = true;
 		List<Event> events = new List<Event>(); // TODO Maybe better as a LinkedList?
 		List<Event> eventsToBeAdded = new List<Event>();
 		Event nextUserEvent = null;
-		bool canAddEvents = true;
-		long time = 0;
+		long time = 0; // this is the absolute simulation time
+		long waitUntil = 0;
+
 
 		public EventDispatcher (Simulator sim) {
 			this.simulator = sim;
@@ -58,6 +61,10 @@ namespace WizardsDuel.Game
 		}
 
 		public void Dispatch() {
+			if (this.waitUntil > IO.GetTime ()) {
+				// wait a certain real-time amount
+				return;
+			}
 			this.UpdateEventQueue ();
 			var newEvents = new List<Event>();
 			this.canAddEvents = false;
@@ -75,14 +82,15 @@ namespace WizardsDuel.Game
 			this.canAddEvents = true;
 		}
 
-		public void RunUserEvent() {
+		public bool RunUserEvent() {
 			if (this.nextUserEvent == null) {
-				return;
+				return false;
 			} else {
 				if (this.nextUserEvent.Run (this.simulator) == false) {
 					this.AppendEvent (this.nextUserEvent);
 				}
 				this.nextUserEvent = null;
+				return true;
 			}
 		}
 
@@ -98,6 +106,10 @@ namespace WizardsDuel.Game
 				}
 				this.eventsToBeAdded.Clear ();
 			}
+		}
+
+		public void WaitFor(int millis) {
+			this.waitUntil = IO.GetTime () + millis;
 		}
 	}
 }

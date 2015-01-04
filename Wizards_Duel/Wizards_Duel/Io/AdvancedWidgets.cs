@@ -22,15 +22,6 @@ using WizardsDuel.Utils;
 
 namespace WizardsDuel.Io
 {
-	public enum LayerType {
-		UNDEFINED,
-		FLOOR,
-		LIGHTS,
-		OBJECTS,
-		WALL,
-		GRID,
-		COUNT
-	}
 
 	public class AnimationFrame {
 		public int duration; // duration in millis
@@ -73,11 +64,13 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class OutObject : Icon {
-		protected float scale = 1f;
-		protected Vector2f halfSize = new Vector2f (0f, 0f);
+	public class OutObject : Icon, IComparable {
+		public const string IDLE_ANIMATION = "IDLE";
+
 		protected bool alreadyAnimated = false;
 		public Dictionary<string, AnimationDefinition> animations = new Dictionary<string, AnimationDefinition>();
+		protected Vector2f halfSize = new Vector2f (0f, 0f);
+		protected float scale = 1f;
 
 		public OutObject(string texture, IntRect srcRect, float scale = 1f) : base (texture, srcRect, scale) {
 			this.halfSize.X = srcRect.Width / 2f;
@@ -86,6 +79,12 @@ namespace WizardsDuel.Io
 
 		public void AddAnimation(string id, AnimationDefinition animation) {
 			this.animations.Add (id, animation);
+			Logger.Debug ("OutObject", "AddAnimation", "Added animation " + id);
+			if (id == OutObject.IDLE_ANIMATION) {
+				this.IdleAnimation = id;
+				this.SetAnimation (id);
+				Logger.Debug ("OutObject", "AddAnimation", "Set idle animation " + id);
+			}
 		}
 
 		virtual public void Animate() {
@@ -98,6 +97,9 @@ namespace WizardsDuel.Io
 			}
 			this.animators = newAnimators;
 			this.alreadyAnimated = true;
+			if (newAnimators.Count == 0 && this.IdleAnimation != null) {
+				this.SetAnimation (this.IdleAnimation);
+			}
 		}
 
 		public float CenterX {
@@ -108,16 +110,27 @@ namespace WizardsDuel.Io
 			get { return this.Y + this.halfSize.Y; }
 		}
 
+		/// <summary>
+		/// Compares two OutObjects to decide the drawing order.
+		/// </summary>
+		/// <returns>The comparison.</returns>
+		/// <param name="obj">Reference object.</param>
+		public int CompareTo(object obj) {
+			try {
+				var comp = (OutObject) obj;
+				if (this.ZIndex == comp.ZIndex) {
+					return this.CenterY.CompareTo (comp.CenterY);
+				} else {
+					return this.ZIndex.CompareTo (comp.ZIndex);
+				}
+			} catch (Exception ex) {
+				Logger.Debug ("OutObject", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+				return 0;
+			}
+		}
+
 		public void DrawWithOffset(RenderTarget target, float x, float y) {
 			if (this.alreadyAnimated == false) {
-				/*List<Animation> newAnimators = new List<Animation> ();
-				foreach (var animator in base.animators) {
-					animator.Update (this);
-					if (animator.HasEnded == false) {
-						newAnimators.Add (animator);
-					}
-				}
-				this.animators = newAnimators;*/
 				this.Animate ();
 			}
 			this.alreadyAnimated = false;
@@ -153,6 +166,17 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		public string IdleAnimation {
+			get;
+			set;
+		}
+
+		override public bool IsAnimating {
+			get { return !this.IsInIdle; }
+		}
+
+		public bool IsInIdle { get; set; }
+
 		override public float Scale {
 			set {
 				base.Scale = value;
@@ -169,8 +193,17 @@ namespace WizardsDuel.Io
 		public void SetAnimation(string id) {
 			AnimationDefinition anim;
 			if (this.animations.TryGetValue (id, out anim) == true) {
+				this.animators.RemoveAll (x => x is SpriteAnimation);
 				anim.SetAnimation (this);
+				this.IsInIdle = (id == OutObject.IDLE_ANIMATION);
 			}
+		}
+
+		public bool ToBeDeleted { get; set; }
+
+		public int ZIndex {
+			get;
+			set;
 		}
 	}
 

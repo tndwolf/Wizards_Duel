@@ -22,6 +22,16 @@ using WizardsDuel.Utils;
 
 namespace WizardsDuel.Io
 {
+	public enum LayerType {
+		UNDEFINED,
+		FLOOR,
+		LIGHTS,
+		OBJECTS,
+		WALL,
+		GRID,
+		COUNT
+	}
+
 	public class WorldView: Widget {
 		public class Rule {
 			public struct Condition {

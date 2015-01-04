@@ -45,8 +45,7 @@ namespace WizardsDuel.Game
 		}
 	}
 
-	public class ActorEvent : Event
-	{
+	public class ActorEvent: Event {
 		public ActorEvent (string oid, long deltaTime = 0): base (deltaTime)
 		{
 			this.Actor = oid;
@@ -61,7 +60,33 @@ namespace WizardsDuel.Game
 		}
 	}
 
-	public class ShiftEvent : ActorEvent {
+	public class AiEvent: ActorEvent {
+		public AiEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
+
+		override public bool Run(Simulator sim) {
+			//Logger.Debug ("AiEvent", "Run", "Running time " + this.StartTime.ToString());
+			this.StartTime = 0;
+			this.DeltaTime = 15; // XXX this should come from the speed of the player actor!
+			var rnd = new Random ();
+			sim.CanShift(this.Actor, rnd.Next(-1,2), rnd.Next(-1,2), true);
+			sim.events.AppendEvent (this);
+			return true;
+		}
+	}
+
+	public class AttackEvent: TargetedEvent {
+		public AttackEvent (Entity attacker, Entity target, long deltaTime = 0): 
+		base (attacker, target, deltaTime) {}
+
+		override public bool Run(Simulator sim) {
+			Logger.Debug ("AttackEvent", "Run", this.Actor + " attacks " + this.Target);
+			var rnd = new Random ();
+			this.Actor.OutObject.SetAnimation ("ATTACK");
+			return true;
+		}
+	}
+
+	public class ShiftEvent: ActorEvent {
 		public ShiftEvent(string oid, int dx, int dy, long deltaTime = 0):
 		base (oid, deltaTime) {
 			this.DX = dx;
@@ -84,16 +109,40 @@ namespace WizardsDuel.Game
 		}
 	}
 
-	public class UserAiEvent : Event {
+	public class TargetedEvent: Event {
+		public TargetedEvent (Entity actor, Entity target, long deltaTime = 0): base (deltaTime) {
+			this.Actor = actor;
+			this.Target = target;
+		}
+
+		/// <summary>
+		/// Gets or Sets the oid of the event's Actor
+		/// </summary>
+		virtual public Entity Actor {
+			get;
+			set;
+		}
+
+		/// <summary>
+		/// Gets or Sets the oid of the event's Target
+		/// </summary>
+		virtual public Entity Target {
+			get;
+			set;
+		}
+	}
+
+	public class UserEvent : Event {
 		EventDispatcher eventDispatcher;
-		public UserAiEvent(EventDispatcher ed, long deltaTime = 0): base (deltaTime) {
+		public UserEvent(EventDispatcher ed, long deltaTime = 0): base (deltaTime) {
 			this.eventDispatcher = ed;
 		}
 
 		override public bool Run(Simulator sim) {
-			this.eventDispatcher.RunUserEvent ();
+			//Logger.Debug ("UserEvent", "Run", "Running time " + this.StartTime.ToString());
+			var acted = this.eventDispatcher.RunUserEvent ();
 			this.StartTime = 0;
-			this.DeltaTime = 10; // XXX this should come from the speed of the player actor!
+			this.DeltaTime = (acted == false) ? 0 : 10; // XXX this should come from the speed of the player actor!
 			this.eventDispatcher.AppendEvent (this);
 			return true;
 		}

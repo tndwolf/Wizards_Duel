@@ -1,0 +1,175 @@
+﻿// Wizard's Duel, a procedural tactical RPG
+// Copyright (C) 2014  Luca Carbone
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+using System;
+using System.Collections.Generic;
+using SFML.Graphics;
+using SFML.Window;
+using WizardsDuel.Utils;
+
+namespace WizardsDuel.Io
+{
+	public struct ParticleTemplate {
+		public string texture;
+		public IntRect textureRect;
+		public float scale;
+	}
+
+	public class Emitter {
+		public List<Animation> animators = new List<Animation> ();
+		public int currentParticles = 0;
+		public int maxParticles = 0;
+		public Vector2f Origin = new Vector2f (0f, 0f);
+		private ParticleSystem particleSystem = null;
+		private List<ParticleTemplate> particleTemplates = new List<ParticleTemplate> ();
+		public int ParticleTTL = 0;
+		private int refDeltaTime = 0;
+		public int SpawnDeltaTime = 0;
+		public int SpawnCount = 0;
+		public int TTL = 0;
+		private List<Spawner> variators = new List<Spawner>();
+
+		public Emitter(ParticleSystem ps, int startDelay = 0) {
+			this.particleSystem = ps;
+			this.refDeltaTime -= startDelay;
+		}
+
+		public void AddAnimator(Animation animator) {
+			this.animators.Add (animator);
+		}
+
+		public void AddParticleTemplate(string texture, int x, int y, int width, int height, float scale = 1f) {
+			var rect = new IntRect (x, y, width, height);
+			var pt = new ParticleTemplate () { texture = texture, textureRect = rect, scale = scale};
+			this.particleTemplates.Add (pt);
+		}
+
+		public void AddVariator(Spawner variator) {
+			this.variators.Add (variator);
+		}
+
+		public void Update(int deltaTime) {
+			this.TTL -= deltaTime;
+			this.refDeltaTime += deltaTime;
+			if (this.TTL > 0 && this.refDeltaTime > this.SpawnDeltaTime) {
+				//this.SpawnDeltaTime = this.refDeltaTime - this.SpawnDeltaTime;
+				this.refDeltaTime = this.refDeltaTime - this.SpawnDeltaTime;
+				this.Spawn();
+			}
+		}
+
+		protected void Spawn() {
+			Random rnd = new Random();
+			for (int i = 0; i < this.SpawnCount; i++) {
+				/*var particle = new Particle (IO.LIGHT_TEXTURE_ID, new IntRect (0, 0, IO.LIGHT_TEXTRE_MAX_RADIUS*2, IO.LIGHT_TEXTRE_MAX_RADIUS*2));
+
+				this.particleSystem.AddParticle (particle);
+
+				var colmin = 200;//100
+				var colmax = 255;//255
+				var col1 = new Color (255, (byte)rnd.Next(colmin, colmax), (byte)rnd.Next(colmin/2, colmax/2), 200);
+				var col2 = new Color (col1.R, col1.G, col1.B, 0);
+				particle.Color = col1;
+				particle.AddAnimator (new ColorAnimation(col1, col2, 1000));
+				particle.TTL = this.ParticleTTL;
+
+				particle.SetPosition (this.Origin.X, this.Origin.Y);
+				particle.Scale = 0.025f;*/
+				var template = this.particleTemplates [rnd.Next (this.particleTemplates.Count)];
+				var particle = new Particle (template.texture, template.textureRect);
+				this.particleSystem.AddParticle (particle);
+				particle.SetPosition (this.Origin.X, this.Origin.Y);
+				particle.Scale = template.scale;
+				particle.TTL = this.ParticleTTL;
+
+				foreach (var variator in this.variators) {
+					variator.Apply (particle);
+				}
+				foreach (var animator in this.animators) {
+					particle.AddAnimator (animator);
+				}
+
+
+			}
+		}
+	}
+
+	public class Spawner {
+		virtual public void Apply(Particle particle) {
+			return;
+		}
+	}
+
+	public class BurstSpawner: Spawner {
+		private float deltaForce;
+		private float minForce;
+		private float minAngle;
+		private float deltaAngle;
+		private Random rnd = new Random();
+
+		public BurstSpawner(float maxForce, float minForce = 0f, float minAngle = 0f, float maxAngle = (float)Math.PI * 2) {
+			this.deltaForce = maxForce - minForce;
+			this.minForce = minForce;
+			this.deltaAngle = maxAngle - minAngle;
+			this.minAngle = minAngle;
+		}
+
+		override public void Apply(Particle particle) {
+			var force = this.minForce + (float)(rnd.NextDouble ()) * this.deltaForce;
+			var angle = this.minAngle + (float)(rnd.NextDouble ()) * this.deltaAngle;
+
+			var forceX = force * (float)Math.Cos (angle);
+			var forceY = force * (float)Math.Sin (angle);
+
+			particle.Velocity = new Vector2f (forceX, forceY);
+		}
+	}
+
+	public class BoxSpawner: Spawner {
+		private Vector2f startBox;
+		private Vector2f endBox;
+		private Random rnd = new Random();
+
+		public BoxSpawner(Vector2f startBox, Vector2f endBox) {
+			this.startBox = startBox;
+			this.endBox = endBox;
+		}
+
+		override public void Apply(Particle particle) {
+			var x = this.startBox.X + (float)(rnd.NextDouble ()) * (this.endBox.X - this.startBox.X);
+			var y = this.startBox.Y + (float)(rnd.NextDouble ()) * (this.endBox.Y - this.startBox.Y);
+			particle.SetPosition (x, y);
+		}
+	}
+
+	public class ColorSpawner: Spawner {
+		private int duration;
+		private Color startColor;
+		private Color endColor;
+
+		public ColorSpawner(Color startColor, Color endColor, int duration) {
+			this.duration = duration;
+			this.startColor = startColor;
+			this.endColor = endColor;
+		}
+
+		override public void Apply(Particle particle) {
+			particle.Color = this.startColor;
+			particle.AddAnimator (new ColorAnimation(this.startColor, this.endColor, this.duration));
+		}
+	}
+}
+

@@ -64,55 +64,110 @@ namespace WizardsDuel.Io
 
 	public class ParticleSystem : Widget {
 		private ObjectsLayer layer = null;
+		private List<Emitter> emitters = new List<Emitter> ();
 		private List<Particle> particles = new List<Particle>();
 
 		public void CreateParticleEffect(ObjectsLayer layer, Vector2f position) {
 			this.layer = layer;
-			Random rnd = new Random();
-			for (int i = 0; i < 100; i++) {
-				var particle = new Particle (IO.LIGHT_TEXTURE_ID, new IntRect (0, 0, IO.LIGHT_TEXTRE_MAX_RADIUS*2, IO.LIGHT_TEXTRE_MAX_RADIUS*2));
+			var e = new Emitter (this, 250);
+			e.Origin = new Vector2f(position.X+56f, position.Y+4f);
+			e.SpawnCount = 1;
+			e.SpawnDeltaTime = 100;
+			e.TTL = 1450;//5250
+			e.ParticleTTL = 1500;
+			/*e.AddAnimator (new GravityAnimation (new Vector2f(0f, -0.0004f)));
+			//e.AddVariator (new BurstSpawner (0.05f));
+			e.AddVariator (new BoxSpawner (new Vector2f(position.X+12f, position.Y+48f), new Vector2f(position.X+48f, position.Y+52f)));
+			//e.AddVariator (new BoxSpawner (new Vector2f(position.X-220f, position.Y-148f), new Vector2f(position.X+256f, position.Y-164f)));
+			e.AddVariator (new ColorSpawner(new Color(255, 255, 255, 196), new Color(255, 255, 255, 0), 2000));
+			e.AddParticleTemplate ("FX01.png", 50, 176, 28, 78, 0.6f);
+			e.AddParticleTemplate ("FX01.png", 150, 165, 24, 84, 0.6f);
+			e.AddParticleTemplate ("FX01.png", 244, 178, 14, 64, 0.6f);//*/
+			/*e.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2f);
+			e.AddParticleTemplate ("FX01.png", 2, 0, 1, 3, 2f);
+			e.AddParticleTemplate ("FX01.png", 10, 0, 1, 1, 2f);
+			e.AddParticleTemplate ("FX01.png", 6, 0, 1, 3, 2f);
+			e.AddParticleTemplate ("FX01.png", 8, 0, 1, 1, 2f);//*/
+			//this.AddEmitter (e);
 
-				var force = (float)(rnd.NextDouble ())/4f;
-				var angle = (float)(rnd.NextDouble ()) * Math.PI * 2;
+			//e.Origin = new Vector2f(position.X+56f, position.Y+4f);
+			e.Origin = new Vector2f(position.X+32, position.Y+12);
+			e.AddVariator (new BurstSpawner (0.2f, 0.22f, (float)Math.PI - 0.1f, (float)Math.PI + 0.1f));
+			//e.AddVariator (new BoxSpawner (new Vector2f(position.X-64*2, position.Y-64*2), new Vector2f(position.X+64*3, position.Y+64*3)));
+			//e.AddAnimator(new AttractAnimation(e.Origin, new Vector2f(position.X+64f*3, position.Y+4), 0.05f));
+			//e.AddAnimator(new AttractAnimation(e.Origin, new Vector2f(position.X+56f*3, position.Y+100), 0.00125f, false));
+			e.AddAnimator(new AttractAnimation(new Vector2f(position.X+32f, position.Y+32f), new Vector2f(position.X+32f, position.Y+32f), 0.025f, false));
+			//e.AddVariator (new ColorSpawner(new Color(255, 255, 255, 255), new Color(255, 255, 255, 128), 5000));
+			//e.AddParticleTemplate ("FX01.png", 143, 331, 42, 42, 0.5f);
+			e.AddParticleTemplate ("FX01.png", 8, 0, 1, 1, 2f);//18, 14, 16 giallo
+			e.AddParticleTemplate ("FX01.png", 4, 0, 1, 1, 2f);
+			e.AddParticleTemplate ("FX01.png", 6, 0, 1, 1, 2f);
+			//e.AddParticleTemplate ("FX01.png", 10, 0, 1, 1, 2f);
+			this.AddEmitter (e);//*/
 
-				var forceX = force * (float)Math.Cos (angle);
-				var forceY = force * (float)Math.Sin (angle);
+			// Lower part of atom
+			/*/e = new Emitter (this, 250);
+			e.Origin = new Vector2f(position.X+56f, position.Y+4f);
+			e.SpawnCount = 2;
+			e.SpawnDeltaTime = 100;
+			e.TTL = 3250;
+			e.ParticleTTL = 3500;
+			e.Origin = new Vector2f(position.X+32, position.Y+64+24);
+			e.AddVariator (new BurstSpawner (0.05f, 0.06f, 0.1f, 0.1f));
+			e.AddAnimator(new AttractAnimation(new Vector2f(position.X+32f, position.Y+32f), new Vector2f(position.X+32f, position.Y+32f), 0.025f, false));
+			e.AddVariator (new ColorSpawner(new Color(255, 255, 255, 255), new Color(255, 255, 255, 128), 5000));
+			e.AddParticleTemplate ("FX01.png", 18, 0, 1, 1, 2f);
+			e.AddParticleTemplate ("FX01.png", 14, 0, 1, 1, 2f);
+			e.AddParticleTemplate ("FX01.png", 16, 0, 1, 1, 2f);
+			this.AddEmitter (e);//*/
 
-				particle.Velocity = new Vector2f (forceX, forceY);
-				particle.SetPosition (position.X, position.Y);
-				particle.AddAnimator (new GravityAnimation (new Vector2f(0f, 0.0004f)));
 
-				var colmin = 200;//100
-				var colmax = 255;//255
-				var col1 = new Color (255, (byte)rnd.Next(colmin, colmax), (byte)rnd.Next(colmin/2, colmax/2), 200);
-				var col2 = new Color (col1.R, col1.G, col1.B, 0);
-				particle.Color = col1;
-				particle.AddAnimator (new ColorAnimation(col1, col2, 1000));
-				particle.TTL = 1000;
-
-				this.particles.Add (particle);
-				this.layer.AddObject (particle);
-				particle.Scale = 0.025f;
-			}
+			/*/e = new Emitter (this, 250);
+			e.Origin = position;//new Vector2f (position.X + 32f, position.Y + 48f);
+			e.SpawnCount = 1;
+			e.SpawnDeltaTime = 200;
+			e.TTL = 3000;
+			e.ParticleTTL = 500;
+			e.AddAnimator (new GravityAnimation (new Vector2f(0f, -0.0003f)));
+			e.AddVariator (new BurstSpawner (0.25f));
+			e.AddVariator (new BoxSpawner (new Vector2f(position.X+8f, position.Y+48f), new Vector2f(position.X+48f, position.Y+64f)));
+			e.AddVariator (new ColorSpawner(new Color(255, 255, 255, 196), Color.Transparent, 1000));
+			e.AddParticleTemplate (IO.LIGHT_TEXTURE_ID, 0, 0, IO.LIGHT_TEXTRE_MAX_RADIUS * 2, IO.LIGHT_TEXTRE_MAX_RADIUS * 2, 0.025f);
+			this.AddEmitter (e);//*/
 		}
 
+		public void AddEmitter(Emitter emitter) {
+			this.emitters.Add (emitter);
+		}
+
+		public void AddParticle(Particle particle) {
+			if (this.LightsLayer != null) {
+				var light = this.LightsLayer.AddLight (0f, 0f, 12f, Color.Red);
+				light.Parent = particle;
+			}
+			this.particles.Add (particle);
+			this.layer.AddObject (particle);
+		}
+
+		public bool Easing { get; set; }
+
 		override public void Draw(RenderTarget target = null) {
-			this.TTL -= IO.GetDelta ();
+			var delta = IO.GetDelta ();
+			this.TTL -= delta;
 			if (this.TTL < 0) {
-				foreach (var particle in this.particles) {
-					this.layer.DeleteObject (particle);
-					//Logger.Debug ("ParticleSystem", "Draw", "Removed particle 1");
-				}
-				this.particles.Clear ();
-				return;
+				this.emitters.Clear ();
+			}
+			foreach(var emitter in this.emitters) {
+				emitter.Update (delta);
 			}
 			foreach(var particle in this.particles) {
 				if (particle.TTL < 0) {
 					this.layer.DeleteObject (particle);
-					//Logger.Debug ("ParticleSystem", "Draw", "Removed particle 2");
 				}
 			}
 		}
+
+		public LightLayer LightsLayer { get; set; }
 
 		public long ParticlesTTL { get; set; }
 
