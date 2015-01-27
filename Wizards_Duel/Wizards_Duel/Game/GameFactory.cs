@@ -19,6 +19,8 @@ using System.Globalization;
 using System.Xml;
 using WizardsDuel.Io;
 using WizardsDuel.Utils;
+using SFML.Window;
+using SFML.Graphics;
 
 namespace WizardsDuel.Game
 {
@@ -84,6 +86,10 @@ namespace WizardsDuel.Game
 							XmlUtilities.GetInt(frames[f], "height"),
 							XmlUtilities.GetInt(frames[f], "duration")
 						);
+						frame.offset = new Vector2f(
+							XmlUtilities.GetFloat(frames[f], "offsetX"), 
+							XmlUtilities.GetFloat(frames[f], "offsetY")
+						);
 						ad.AddFrame(frame);
 						//Logger.Debug ("GameFactory", "LoadFromTemplate", "Added frame" + frame.ToString());
 					}
@@ -96,6 +102,110 @@ namespace WizardsDuel.Game
 				return res;
 			} catch (Exception ex) {
 				Logger.Warning ("GameFactory", "LoadFromTemplate", ex.ToString ());
+				return null;
+			}
+		}
+
+		static public ParticleSystem LoadParticleFromTemplate(string templateId, float x, float y, ObjectsLayer layer, bool flip = false) {
+			try {
+				var xCoeff = flip ? -1f : 1f;
+				var angleCoeff = flip ? 3.1415f : 0f;
+				var res = new ParticleSystem ();
+				XmlNode template = GameFactory.xdoc.SelectSingleNode ("//particle[@id='" + templateId + "']");
+				res.TTL = XmlUtilities.GetInt(template, "ttl");
+				res.Layer = layer;
+				res.Position = new Vector2f(x, y);
+
+				var emitters = template.SelectNodes("./emitter");
+				for (int e = 0; e < emitters.Count; e++) {
+					Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New emitter: " + emitters[e].ToString());
+					var startDelay = XmlUtilities.GetInt(emitters[e], "startDelay");
+					var emitter = new Emitter(res, startDelay);
+					emitter.Offset = new Vector2f(
+						XmlUtilities.GetFloat(emitters[e], "offsetX") * xCoeff,
+						XmlUtilities.GetFloat(emitters[e], "offsetY")
+					);
+					emitter.ParticleTTL = XmlUtilities.GetInt(emitters[e], "particleTtl");
+					emitter.SpawnCount = XmlUtilities.GetInt(emitters[e], "spawnCount");
+					emitter.SpawnDeltaTime = XmlUtilities.GetInt(emitters[e], "spawnDeltaTime");
+					emitter.TTL = XmlUtilities.GetInt(emitters[e], "ttl");
+					emitter.ZIndex = XmlUtilities.GetInt(emitters[e], "zIndex", 0);
+
+					var children = emitters[e].ChildNodes;
+					for(var c = 0; c < children.Count; c++) {
+						switch (children[c].Name) {
+						case "boxSpawner":
+							emitter.AddVariator (new BoxSpawner (
+								XmlUtilities.GetFloat(children[c], "width"),
+								XmlUtilities.GetFloat(children[c], "height")
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New BoxSpawner: " + children[c].ToString());
+							break;
+
+						case "burstSpawner":
+							emitter.AddVariator (new BurstSpawner (
+								XmlUtilities.GetFloat(children[c], "maxForce"),
+								XmlUtilities.GetFloat(children[c], "minForce"),
+								XmlUtilities.GetFloat(children[c], "maxAngle") + angleCoeff,
+								XmlUtilities.GetFloat(children[c], "minAngle") + angleCoeff
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New BurstSpawner: " + children[c].ToString());
+							break;
+
+						case "colorPicker":
+							var cps  = new ColorPickerSpawner ();
+							var colors = children[c].SelectNodes("./color");
+							for (int i = 0; i < colors.Count; i++) {
+								var color = XmlUtilities.GetIntArray(colors[i], "select");
+								switch (color.Length) {
+								case 3:
+									cps.AddColor(new Color((byte)color[0], (byte)color[1], (byte)color[2]));
+									break;
+								case 4:
+									cps.AddColor(new Color((byte)color[0], (byte)color[1], (byte)color[2], (byte)color[3]));
+									break;
+								default: break;
+								}
+							}
+							emitter.AddVariator (cps);
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New ColorPickerSpawner: " + children[c].ToString());
+							break;
+
+						case "gravity":
+							emitter.AddAnimator (new GravityAnimation (new Vector2f(
+								XmlUtilities.GetFloat(children[c], "forceX") * xCoeff, 
+								XmlUtilities.GetFloat(children[c], "forceY")
+							)));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New GravityAnimation: " + children[c].ToString());
+							break;
+
+						case "particleTemplate":
+							emitter.AddParticleTemplate(
+								XmlUtilities.GetString(children[c], "texture"),
+								XmlUtilities.GetInt(children[c], "x"),
+								XmlUtilities.GetInt(children[c], "y"),
+								XmlUtilities.GetInt(children[c], "width"),
+								XmlUtilities.GetInt(children[c], "height"),
+								XmlUtilities.GetFloat(children[c], "scale", 1f)
+							);
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New particle: " + children[c].ToString());
+							break;
+
+						default:
+							break;
+						}
+					}
+
+					//emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2f);
+
+					res.AddEmitter(emitter);
+				}
+
+				Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "Built particle system " + templateId);
+
+				return res;
+			} catch (Exception ex) {
+				Logger.Warning ("GameFactory", "LoadParticleFromTemplate", ex.ToString ());
 				return null;
 			}
 		}

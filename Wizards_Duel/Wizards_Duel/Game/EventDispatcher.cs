@@ -61,7 +61,7 @@ namespace WizardsDuel.Game
 		}
 
 		public void Dispatch() {
-			if (this.waitUntil > IO.GetTime ()) {
+			if (this.waitUntil > IoManager.Time) {
 				// wait a certain real-time amount
 				return;
 			}
@@ -109,7 +109,7 @@ namespace WizardsDuel.Game
 		}
 
 		public void WaitFor(int millis) {
-			this.waitUntil = IO.GetTime () + millis;
+			this.waitUntil = IoManager.Time + millis;
 		}
 	}
 }

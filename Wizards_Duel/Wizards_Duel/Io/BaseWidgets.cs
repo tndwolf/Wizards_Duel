@@ -21,56 +21,138 @@ using SFML.Window;
 
 namespace WizardsDuel.Io
 {
-	public enum Facing {
-		LEFT,
-		RIGHT
+	public class Button: Widget, IClickable {
+		//Icon icon = null;
+		Label text = null;
+
+		virtual public bool Contains(int x, int y) {
+			return x > this.OffsetPosition.X
+				&& x < this.OffsetPosition.X + this.Width
+				&& y > this.OffsetPosition.Y
+				&& y < this.OffsetPosition.Y + this.Height;
+		}
+
+		override public void Draw(RenderTarget target, RenderStates states) {
+			base.Draw(target, states);
+			this.OffsetPosition = states.Transform.TransformPoint(this.Position);
+			if (text != null) target.Draw(text, states);
+		}
+
+		virtual public float Height { 
+			get;
+			set;
+		}
+
+		public string Text {
+			get { 
+				if (this.text != null) {
+					return this.text.Text;
+				}
+				else {
+					return String.Empty;
+				}
+			}
+			set {
+				if (this.text != null) {
+					this.text.Text = value;
+				}
+				else {
+					this.text = new Label(value);
+					this.text.Color = Color.White;
+				}
+			}
+		}
+
+		virtual public float Width { 
+			get;
+			set;
+		}
+
+		#region IClickable implementation
+		public bool Enabled { get; set; }
+
+		public Vector2f OffsetPosition { get; set; }
+
+		public void OnMouseMove(object sender, MouseMoveEventArgs e) {
+			//throw new NotImplementedException();
+			return;
+		}
+
+		private bool pressed = false;
+		public void OnMousePressed(object sender, MouseButtonEventArgs e) {
+			//Console.WriteLine("Clicked: " + e.ToString());
+			//Console.WriteLine("My Position: " + this.Position.ToString());
+			//Console.WriteLine("My Offset: " + this.OffsetPosition.ToString());
+			if (this.Contains(e.X, e.Y)) {
+				this.pressed = true;
+			}
+		}
+
+		public void OnMouseReleased(object sender, MouseButtonEventArgs e) {
+			if (this.Contains(e.X, e.Y) && this.pressed == true) {
+				Console.WriteLine("Released: " + e.ToString());
+				this.pressed = false;
+			}
+		}
+		#endregion
 	}
 
 	/// <summary>
-	/// Basic container widget. No layouts are enforced
+	/// Basic container for widgets. It does no transformations on the contents.
 	/// </summary>
 	public class Frame: Widget {
-		private List<Widget> widgets = new List<Widget>();
+		List<Widget> widgets = new List<Widget>();
 
-		public void AddWidget(Widget widget) {
-			widgets.Add (widget);
+		public Frame() {
 		}
 
-		/// <summary>
-		/// Clear the contents of the frame.
-		/// </summary>
-		public void Clear() {
-			this.widgets.Clear ();
+		virtual public void AddWidget(Widget widget) {
+			this.widgets.Add(widget);
 		}
 
-		public void DeleteWidget(Widget widget) {
-			widgets.Remove (widget);
+		virtual public void Clear() {
+			this.widgets.Clear();
 		}
 
-		override public void Draw(RenderTarget target) {
-			base.Draw (target);
-			foreach(var widget in this.widgets) {
-				widget.Draw (target);
+		virtual public void DeleteWidget(Widget widget) {
+			this.widgets.Remove (widget);
+		}
+
+		override public void Draw(RenderTarget target, RenderStates states) {
+			states.Transform.Translate(this.Position);
+			base.Draw(target, states);
+			foreach (var widget in this.widgets) {
+				widget.Draw(target, states);
 			}
+		}
+
+		override public float X { 
+			get { return this.Position.X; }
+			set { this.Position = new Vector2f(value, this.Position.Y); }
+		}
+
+		override public float Y { 
+			get { return this.Position.Y; }
+			set { this.Position = new Vector2f(this.Position.X, value); }
 		}
 	}
 
 	/// <summary>
 	/// Basic icon widget
 	/// </summary>
-	public class Icon: Widget {
+	public class Icon2: Widget {
 		public Sprite sprite = null;
 		private Facing facing = Facing.RIGHT;
 		protected bool updateFacing = false;
 		protected Vector2f offset = new Vector2f (0f, 0f);
 
-		public Icon(string texture, IntRect srcRect, float scale = 1f) {
-			var tex = IO.LoadTexture (texture);
+		public Icon2(string texture, IntRect srcRect, float scale = 1f) {
+			var tex = IoManager.LoadTexture (texture);
 			this.sprite = new Sprite (tex, srcRect);
 			//this.drawRect = this.sprite.GetGlobalBounds ();
-			this.drawRect.Width = srcRect.Width;
+			/*this.drawRect.Width = srcRect.Width;
 			this.drawRect.Height = srcRect.Height;
-			this.Scale = scale;
+			this.Scale = scale;*/
 		}
 
 		virtual public Color Color { 
@@ -92,7 +174,7 @@ namespace WizardsDuel.Io
 			}
 		}
 
-		override public void Move(int dx, int dy) {
+		/*override public void Move(int dx, int dy) {
 			this.drawRect.Left += dx;
 			this.drawRect.Top += dy;
 			this.sprite.Position = new Vector2f (this.drawRect.Left, this.drawRect.Top);
@@ -110,11 +192,11 @@ namespace WizardsDuel.Io
 			this.drawRect.Left = x;
 			this.drawRect.Top = y;
 			this.sprite.Position = new Vector2f (x, y);
-		}
+		}*/
 
-		override public void Draw(RenderTarget target) {
-			base.Draw (target);
-			if (this.updateFacing == true) {
+		override public void Draw(RenderTarget target, RenderStates states) {
+			base.Draw (target, states);
+			/*if (this.updateFacing == true) {
 				this.sprite.Scale = new Vector2f (-this.sprite.Scale.X, this.sprite.Scale.Y);
 				switch (this.Facing) {
 				case Facing.LEFT:
@@ -127,139 +209,66 @@ namespace WizardsDuel.Io
 					break;
 				}
 				this.updateFacing = false;
-			}
-			target.Draw(this.sprite);
-		}
-	}
-
-	/// <summary>
-	/// Basic single line label
-	/// </summary>
-	public class Label: Widget {
-		private string text = "";
-		private Text label;
-
-		public Label(string text, int size = 12, string fontID = IO.DEFAULT_FONT) {
-			this.text = text;
-			this.label = new Text(text, IO.LoadFont(fontID, size), (uint)size);
-			this.Width = label.GetGlobalBounds ().Width;
-		}
-
-		override public void Draw(RenderTarget target) {
-			base.Draw (target);
-			target.Draw(label);
-		}
-
-		override public float X {
-			get { return this.drawRect.Left; }
-			set { 
-				this.drawRect.Left = value;
-				this.label.Position = new Vector2f(value, this.Y);
-			}
-		}
-
-		override public float Y {
-			get { return this.drawRect.Top; }
-			set { 
-				this.drawRect.Top = value; 
-				this.label.Position = new Vector2f(this.X, value);
-			}
-		}
-
-		override public void SetPosition(float x, float y) {
-			this.X = x;
-			this.Y = y;
+			}*/
+			target.Draw(this.sprite, states);
 		}
 	}
 
 	/// <summary>
 	/// Basic Widget class from which all widgets inhereit
 	/// </summary>
-	public class Widget {
-		protected FloatRect drawRect = new FloatRect (0f, 0f, 0f, 0f);
-		protected List<Animation> animators = new List<Animation> ();
+	public class Widget: Drawable {
+		protected List<Animator> animators = new List<Animator>();
+		List<Decorator> decorators = new List<Decorator>();
+		Vector2f position = new Vector2f();
 
-		/// <summary>
-		/// Adds an animator.
-		/// </summary>
-		/// <param name="animator">Animator.</param>
-		public void AddAnimator(Animation animator) {
-			this.animators.Add (animator);
-		}
+		public Widget() {}
 
-		/// <summary>
-		/// Draw the widget on the specified target.
-		/// </summary>
-		/// <param name="target">Target.</param>
-		virtual public void Draw(RenderTarget target) {
-			List<Animation> newAnimators = new List<Animation> ();
-			foreach (var animator in this.animators) {
-				animator.Update (this);
-				if (animator.HasEnded == false) {
-					newAnimators.Add (animator);
-				}
+		virtual public void AddAnimator(Animator animator) {
+			if (animator.IsParentValid(this)) {
+				this.animators.Add(animator);
 			}
-			this.animators = newAnimators;
+			else {
+				// TODO Log error
+			}
 		}
+
+		virtual public void AddDecorator(Decorator decorator) {
+			this.decorators.Add(decorator);
+		}
+
+		virtual public void ClearDecorators() {
+			this.decorators.Clear();
+		}
+
+		#region Drawable implementation
+		virtual public void Draw(RenderTarget target, RenderStates states) {
+			foreach (var animator in this.animators) {
+				animator.Update(this);
+			}
+			foreach (var decorator in this.decorators) {
+				decorator.Draw(target, states);
+			}
+		}
+		#endregion
 
 		virtual public void Move(int dx, int dy) {
-			this.X += dx;
-			this.Y += dy;
+			this.position = new Vector2f(this.position.X + dx, this.position.Y + dy);
 		}
 
-		/// <summary>
-		/// Gets or sets the height of the widget in pixels.
-		/// </summary>
-		/// <value>The height.</value>
-		virtual public float Height {
-			get { return this.drawRect.Height; }
-			set { this.drawRect.Height = value; }
+		virtual public Vector2f Position {
+			get { return this.position; } 
+			set { this.position = value; }
 		}
 
-		virtual public bool IsAnimating {
-			get { return this.animators.Count > 0; }
+		virtual public float X { 
+			get { return this.position.X; } 
+			set { this.position = new Vector2f(value, this.position.Y); }
 		}
 
-		virtual public int PaddingBottom {
-			get;
-			set;
-		}
-
-		/// <summary>
-		/// Sets the position of the widget relative to the screen.
-		/// </summary>
-		/// <param name="x">The x coordinate.</param>
-		/// <param name="y">The y coordinate.</param>
-		virtual public void SetPosition(float x, float y) {
-			this.drawRect.Top = y;
-			this.drawRect.Left = x;
-		}
-
-		/// <summary>
-		/// Gets or sets the x coordinate relative to the screen.
-		/// </summary>
-		/// <value>The x.</value>
-		virtual public float X {
-			get { return this.drawRect.Left; }
-			set { this.drawRect.Left = value; }
-		}
-
-		/// <summary>
-		/// Gets or sets the y coordinate relative to the screen.
-		/// </summary>
-		/// <value>The y.</value>
-		virtual public float Y {
-			get { return this.drawRect.Top; }
-			set { this.drawRect.Top = value; }
-		}
-
-		/// <summary>
-		/// Gets or sets the width of the widget in pixels.
-		/// </summary>
-		/// <value>The width.</value>
-		virtual public float Width {
-			get { return this.drawRect.Width; }
-			set { this.drawRect.Width = value; }
+		virtual public float Y { 
+			get { return this.position.Y; } 
+			set { this.position = new Vector2f(this.position.X, value); }
 		}
 	}
 }

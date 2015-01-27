@@ -42,7 +42,7 @@ namespace WizardsDuel
 				Logger.Blacklist("AddRule");
 				Logger.Blacklist("AddLayer");
 				//Logger.Blacklist("BackgroundMusic");
-				IO.Initialize ("Wizard's Duel", 800, 480);
+				IoManager.Initialize ("Wizard's Duel", 800, 480);
 				//Logger.Initialize (LogLevel.ALL, logPrintToScreen);
 				//Logger.SetOutFile (logPrefix, logUseTimestamp);
 				//IO.Initialize ("Wizard's Duel", width, height);
@@ -53,14 +53,15 @@ namespace WizardsDuel
 
 			WorldView tm;
 			var showingGrid = false;
-			var simulator = new Simulator (out tm);
+			var simulator = Simulator.Instance;//new Simulator (out tm);
+			simulator.Initialize (out tm);
 			tm.EnableGrid(showingGrid);
+			//tm.ShowGuides = true;
 
-			//simulator.AddLight (400, 240, 200, new Color(254, 250, 235));
 			simulator.AddLight (Simulator.PLAYER_ID, 200, new Color(254, 250, 235));
-			IO.PlayMusic ("test1");
+			IoManager.PlayMusic ("test1");
 			while (true) {
-				var inputs = IO.GetInputs ();
+				var inputs = IoManager.GetInputs ();
 				if (inputs.Command == InputCommands.QUIT) {
 					return;
 				} else if (inputs.Command == InputCommands.UP) {
@@ -86,7 +87,7 @@ namespace WizardsDuel
 					var col = new Color ((byte)rnd.Next(colmin, colmax), (byte)rnd.Next(colmin, colmax), (byte)rnd.Next(colmin, colmax));
 					var rad = (float)rnd.Next (50, 150);
 					simulator.AddLight (inputs.MouseX, inputs.MouseY, rad, col);*/
-					simulator.Cast (Simulator.PLAYER_ID);
+					//simulator.Cast (Simulator.PLAYER_ID);
 				} else if (inputs.Command == InputCommands.TOGGLE_GRID) {
 					showingGrid = !showingGrid;
 					tm.EnableGrid(showingGrid);
@@ -97,34 +98,34 @@ namespace WizardsDuel
 				switch (inputs.Unicode) {
 				case "1":
 					Logger.Debug ("Main", "main", "Set next loop to 1");
-					IO.SetNextMusicLoop ("test1");
+					IoManager.SetNextMusicLoop ("test1");
 					break;
 				case "2":
 					Logger.Debug ("Main", "main", "Set next loop to 2");
-					IO.SetNextMusicLoop ("test2");
+					IoManager.SetNextMusicLoop ("test2");
 					break;
 				case "3":
 					Logger.Debug ("Main", "main", "Set next loop to 3");
-					IO.SetNextMusicLoop ("test3");
+					IoManager.SetNextMusicLoop ("test3");
 					break;
 				case "4":
 					Logger.Debug ("Main", "main", "Set next loop to 4");
-					IO.SetNextMusicLoop ("test4");
+					IoManager.SetNextMusicLoop ("test4");
 					break;
 				case "5":
 					Logger.Debug ("Main", "main", "Set next loop to 5");
-					IO.SetNextMusicLoop ("test5");
+					IoManager.SetNextMusicLoop ("test5");
 					break;
 				case "6":
 					Logger.Debug ("Main", "main", "Set next loop to 6");
-					IO.SetNextMusicLoop ("test6");
+					IoManager.SetNextMusicLoop ("test6");
 					break;
 				default:
 					break;
 				}
 
 				simulator.DoLogic ();
-				IO.Draw ();
+				IoManager.Draw ();
 			}
 		}
 	}

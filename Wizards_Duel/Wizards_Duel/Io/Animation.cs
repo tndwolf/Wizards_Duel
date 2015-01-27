@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using SFML.Graphics;
 using SFML.Window;
+using WizardsDuel.Utils;
 
 namespace WizardsDuel.Io
 {
@@ -31,7 +32,7 @@ namespace WizardsDuel.Io
 	/// <summary>
 	/// Base animation class from which all the Animations are derived
 	/// </summary>
-	public class Animation {
+	public class Animator {
 		protected bool hasEnded = false;
 
 		/// <summary>
@@ -44,6 +45,17 @@ namespace WizardsDuel.Io
 		}
 
 		/// <summary>
+		/// Determines whether the specific parent widget is valid for this animator.
+		/// This method should be used by the parent AddDecorator to check if the
+		/// animator is valid or discharge it.
+		/// </summary>
+		/// <returns><c>true</c> if valid; otherwise, <c>false</c>.</returns>
+		/// <param name="parent">Parent Widget.</param>
+		virtual public bool IsParentValid(Widget parent) {
+			return true;
+		}
+
+		/// <summary>
 		/// Update the specified parent.
 		/// </summary>
 		/// <param name="parent">Parent.</param>
@@ -53,7 +65,7 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class AttractAnimation: Animation {
+	public class AttractAnimation: Animator {
 		private float strength;
 		private float strengthX;
 		private float strengthY;
@@ -85,7 +97,7 @@ namespace WizardsDuel.Io
 				this.strength * dx / (distance*distance),
 				this.strength * dy / (distance*distance)
 			);
-			((Particle)parent).Accelerate (acceleration, IO.GetDelta ());
+			((Particle)parent).Accelerate (acceleration, IoManager.DeltaTime);
 			if (this.DeleteOnReach) {
 				if (distance < DESTROY_RADIUS)
 					((Particle)parent).TTL = 0;
@@ -93,7 +105,7 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class ColorAnimation : Animation {
+	public class ColorAnimation : Animator {
 		private int endTime = 0;
 		private int refTime = 0;
 		float k = 0.0f; // position on the animation [0.0 -> 1.0]
@@ -110,7 +122,7 @@ namespace WizardsDuel.Io
 
 		override public void Update(Widget parent) {
 			var p = (Icon)parent;
-			this.refTime += IO.GetDelta ();
+			this.refTime += IoManager.DeltaTime;
 			if (this.refTime > this.endTime) {
 				this.k = 1.0f;
 				p.Color = this.EndColor;
@@ -128,7 +140,7 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class GravityAnimation : Animation {
+	public class GravityAnimation : Animator {
 		private Vector2f gravity = new Vector2f(0f, 0.032f);
 
 		/// <summary>
@@ -144,7 +156,7 @@ namespace WizardsDuel.Io
 
 		override public void Update(Widget parent) {
 			var p = (Particle)parent;
-			var t = IO.GetDelta ();
+			var t = IoManager.DeltaTime;
 			p.Accelerate (this.Gravity, t);
 		}
 	}
@@ -155,9 +167,10 @@ namespace WizardsDuel.Io
 	public struct KeyFrame {
 		public int millis;
 		public IntRect rect;
+		public Vector2f offset;
 	}
 
-	public class OrthoPathAnimation: Animation {
+	public class OrthoPathAnimation: Animator {
 		int endRef; // end millis
 		int currRef = 0; // millis from the start
 		int stepSize; // in pixels
@@ -186,7 +199,7 @@ namespace WizardsDuel.Io
 		override public void Update(Widget parent) {
 			int move = 0;
 			int deltaMove = 0;
-			this.currRef += IO.GetDelta ();
+			this.currRef += IoManager.DeltaTime;
 			if (this.currRef > this.endRef) {
 				this.refStep = 0;
 				this.currRef = this.currRef - this.endRef;
@@ -225,7 +238,7 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class SpringAnimation: Animation {
+	public class SpringAnimation: Animator {
 		int endRef; // end millis
 		int currRef = 0; // millis from the start
 		int maxExtension; // in pixels
@@ -253,7 +266,7 @@ namespace WizardsDuel.Io
 
 		override public void Update(Widget parent) {
 			int move = 0;
-			this.currRef += IO.GetDelta ();
+			this.currRef += IoManager.DeltaTime;
 			if (this.currRef > this.endRef) {
 				this.currRef = this.currRef - this.endRef;
 				this.k = 0.0f;
@@ -269,12 +282,13 @@ namespace WizardsDuel.Io
 				this.k = (1.0f - (float)(this.endRef - this.currRef * 2)) / (float)(this.endRef);
 				move = this.maxExtension - (int)(this.maxExtension * k);
 			}
-			parent.Move (0, parent.PaddingBottom - move);
-			parent.PaddingBottom = move;
+			// TODO change padding movement
+			//parent.Move (0, parent.PaddingBottom - move);
+			//parent.PaddingBottom = move;
 		}
 	}
 
-	public class SpriteAnimation: Animation {
+	public class SpriteAnimation: Animator {
 		int currRef = 0; // millis from the start
 		int endRef = 0; // ending of animation
 		int currFrame = 0;
@@ -290,9 +304,9 @@ namespace WizardsDuel.Io
 		/// <param name="sprite">Sprite.</param>
 		/// <param name="duration">Duration of the sprite in milliseconds. 
 		/// Note that it is different from when instancing the Animation directly</param>
-		public void AppendSprite(IntRect sprite, int duration) {
+		public void AppendSprite(IntRect sprite, Vector2f soffset, int duration) {
 			var end = duration + this.endRef;
-			var kf = new KeyFrame() { millis = end, rect = sprite};
+			var kf = new KeyFrame() { millis = end, rect = sprite, offset = soffset};
 			//Console.WriteLine ("Appending sprite " + kf.rect.ToString() + " ending at " + end.ToString());
 			this.frames.Add (kf);
 			this.endRef += duration;
@@ -308,10 +322,12 @@ namespace WizardsDuel.Io
 		}
 
 		override public void Update(Widget parent) {
-			this.currRef += IO.GetDelta ();
+			this.currRef += IoManager.DeltaTime;
+			var icon = parent as Icon;
 			if (this.currRef > this.endRef) {
 				//var sprite = ((Icon)parent).sprite;
-				(((Icon)parent).sprite).TextureRect = this.frames [this.frames.Count-1].rect;
+				icon.Sprite = this.frames [this.frames.Count-1].rect;
+				icon.Padding = this.frames [this.frames.Count-1].offset;
 				if (this.Looping == false) {
 					this.hasEnded = true;
 					return;
@@ -322,8 +338,9 @@ namespace WizardsDuel.Io
 			try {
 				if (this.frames [this.currFrame].millis < this.currRef) {
 					this.currFrame += 1;
-					var sprite = ((Icon)parent).sprite;
-					(((Icon)parent).sprite).TextureRect = this.frames [this.currFrame].rect;
+					var sprite = icon.Sprite;
+					icon.Sprite = this.frames [this.currFrame].rect;
+					icon.Padding = this.frames [this.currFrame].offset;
 				}
 			}
 			catch {
@@ -332,11 +349,11 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class TranslateAnimation: Animation {
+	public class TranslateAnimation: Animator {
 		int endRef; // end millis
 		int currRef = 0; // millis from the start
-		int deltaX; // in pixels
-		int deltaY; // in pixels
+		public int deltaX; // in pixels
+		public int deltaY; // in pixels
 		int refStepX = 0;
 		int refStepY = 0;
 		float k = 0.0f; // position on the animation [0.0 -> 1.0]
@@ -345,19 +362,20 @@ namespace WizardsDuel.Io
 			this.endRef = stepMillis;
 			this.deltaX = deltaX;
 			this.deltaY = deltaY;
+			Logger.Debug ("TranslateAnimation", "TranslateAnimation", "Created Translation");
 		}
 
 		override public void Update(Widget parent) {
 			int moveX = 0;
 			int moveY = 0;
-			this.currRef += IO.GetDelta ();
+			this.currRef += IoManager.DeltaTime;
 			if (this.currRef > this.endRef) {
 				this.k = 1.0f;
 				moveX = (int)(this.deltaX * k);
 				moveY = (int)(this.deltaY * k);
 				parent.Move (moveX - this.refStepX, moveY - this.refStepY);
 				this.hasEnded = true;
-				Console.WriteLine ("Translate ending at " + IO.GetTime().ToString());
+				Logger.Debug ("TranslateAnimation", "Update", "Translate ending at " + IoManager.Time.ToString());
 			}
 			else {
 				this.k = 1.0f - (float)(this.endRef - this.currRef) / (float)(this.endRef);

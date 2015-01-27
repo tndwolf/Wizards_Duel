@@ -41,9 +41,7 @@
     <Compile Include="Wizards_Duel\Game\EventDispatcher.cs" />
     <Compile Include="Wizards_Duel\Game\Events.cs" />
     <Compile Include="Wizards_Duel\Game\GameFactory.cs" />
-    <Compile Include="Wizards_Duel\Game\Simulator.cs">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
+    <Compile Include="Wizards_Duel\Game\Simulator.cs" />
     <Compile Include="Wizards_Duel\Game\World.cs" />
     <Compile Include="Wizards_Duel\Io\AdvancedWidgets.cs" />
     <Compile Include="Wizards_Duel\Io\Animation.cs" />
@@ -59,6 +57,9 @@
     <Compile Include="Wizards_Duel\Io\Interfaces.cs" />
     <Compile Include="Wizards_Duel\Io\BaseWidgets.cs" />
     <Compile Include="Wizards_Duel\Io\IoManager.cs" />
+    <Compile Include="Wizards_Duel\Io\Decorators.cs" />
+    <Compile Include="Wizards_Duel\Io\GraphicWidgets.cs" />
+    <Compile Include="Wizards_Duel\Io\TextWidgets.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Xml" />
@@ -75,7 +76,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\Test.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Assets\musictest.ogg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

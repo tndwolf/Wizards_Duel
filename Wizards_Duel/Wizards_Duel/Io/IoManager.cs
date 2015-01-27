@@ -51,60 +51,102 @@ namespace WizardsDuel.Io
 		public float MouseY = 0f;
 	}
 
-	public static class IO {
+	public static class IoManager {
 		public const string DEFAULT_FONT = "";
 
 		private static string ASSETS_DIRECTORY = "Assets" + Path.DirectorySeparatorChar;
 
 		public static string LIGHT_TEXTURE_ID = "shaded_circle";
 		public static int LIGHT_TEXTRE_MAX_RADIUS = 128;
-		public static int LIGHT_TEXTRE_MIN_RADIUS = 96;
+		public static int LIGHT_TEXTRE_MIN_RADIUS = 32;
 
-		private static RenderWindow window;
+		/*private static RenderWindow window;
 		private static Dictionary<string, Font> fonts = new Dictionary<string, Font>();
 		private static Dictionary<string, Sound> sounds = new Dictionary<string, Sound>();
 		private static Dictionary<string, Texture> textures = new Dictionary<string, Texture>();
 		private static BackgroundMusic music = null;
-		private static Frame root = new Frame();
+		private static Frame root = new Frame();*/
 
 		private static Inputs inputs = new Inputs();
 		private static Inputs inputRes = new Inputs();
-		private static Stopwatch clock = new Stopwatch ();
+		/*private static Stopwatch clock = new Stopwatch ();
 		private static long refTime = 0;
-		private static long refreshTime = 20;
+		private static long refreshTime = 20;*/
+
+		static Stopwatch clock;
+		static long deltaTime;
+		static long frameTime;
+		static Dictionary<string, Font> fonts = new Dictionary<string, Font>();
+		static BackgroundMusic music;
+		static long referenceTime;
+		static Frame root;
+		static Dictionary<string, Sound> sounds = new Dictionary<string, Sound>();
+		static Dictionary<string, Texture> textures = new Dictionary<string, Texture>();
+		static RenderWindow window;
 
 		/// <summary>
-		/// Appends the widget to the drawing pipeline
+		/// Adds the widget to the drawing pipeline. If the widget is clickable or
+		/// accepts text inputs it will be added to the event dispatching queue
 		/// </summary>
-		/// <param name="widget">Widget.</param>
-		public static void AddWidget(Widget widget) {
-			root.AddWidget (widget);
+		/// <param name="widget">The Widget.</param>
+		static public void AddWidget(Widget widget) {
+			IoManager.root.AddWidget(widget);
+
+			var clickable = widget as IClickable;
+			if (clickable != null) {
+				IoManager.window.MouseMoved += clickable.OnMouseMove;
+				IoManager.window.MouseButtonPressed += clickable.OnMousePressed;
+				IoManager.window.MouseButtonReleased += clickable.OnMouseReleased;
+			}
+			var textarea = widget as ITextArea;
+			if (textarea != null) {
+				IoManager.window.KeyPressed += textarea.OnKeyPressed;
+				IoManager.window.KeyReleased += textarea.OnKeyReleased;
+				IoManager.window.TextEntered += textarea.OnTextEntered; 
+			}
+		}
+
+		static public string AssetDirectory { get; set; }
+
+		static public void Clear() {
+			IoManager.ClearWidgets();
+			IoManager.ClearAssets();
+		}
+
+		static public void ClearAssets() {
+			IoManager.fonts.Clear();
+			IoManager.textures.Clear();
+			IoManager.sounds.Clear();
+		}
+
+		static public void ClearWidgets() {
+			IoManager.root.Clear();
 		}
 
 		private static void CheckKeyboard() {
 			if (Keyboard.IsKeyPressed (Keyboard.Key.Left) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad4)) {
-				IO.inputs.Command = InputCommands.LEFT;
+				IoManager.inputs.Command = InputCommands.LEFT;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Right) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad6)) {
-				IO.inputs.Command = InputCommands.RIGHT;
+				IoManager.inputs.Command = InputCommands.RIGHT;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Up) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad8)) {
-				IO.inputs.Command = InputCommands.UP;
+				IoManager.inputs.Command = InputCommands.UP;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Down) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad2)) {
-				IO.inputs.Command = InputCommands.DOWN;
+				IoManager.inputs.Command = InputCommands.DOWN;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad7)) {
-				IO.inputs.Command = InputCommands.UP_LEFT;
+				IoManager.inputs.Command = InputCommands.UP_LEFT;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad9)) {
-				IO.inputs.Command = InputCommands.UP_RIGHT;
+				IoManager.inputs.Command = InputCommands.UP_RIGHT;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad1)) {
-				IO.inputs.Command = InputCommands.DOWN_LEFT;
+				IoManager.inputs.Command = InputCommands.DOWN_LEFT;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad3)) {
-				IO.inputs.Command = InputCommands.DOWN_RIGHT;
+				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
 			}
 		}
 
@@ -115,9 +157,9 @@ namespace WizardsDuel.Io
 		/// <returns>The shaded circle texture.</returns>
 		public static Texture CreateShadedCircle2() {
 			Texture tex;
-			if (IO.textures.TryGetValue (IO.LIGHT_TEXTURE_ID, out tex) == false) {
-				var R_MAX = IO.LIGHT_TEXTRE_MAX_RADIUS;
-				var r_min = IO.LIGHT_TEXTRE_MIN_RADIUS;
+			if (IoManager.textures.TryGetValue (IoManager.LIGHT_TEXTURE_ID, out tex) == false) {
+				var R_MAX = IoManager.LIGHT_TEXTRE_MAX_RADIUS;
+				var r_min = IoManager.LIGHT_TEXTRE_MIN_RADIUS;
 				var image = new Image ((uint)R_MAX * 2, (uint)R_MAX * 2, Color.Black);
 				// fill with a shaded circle
 				// of course this is not optimized (no simmetry, no reuse of variables...)
@@ -141,40 +183,59 @@ namespace WizardsDuel.Io
 				}
 				tex = new Texture (image);
 				tex.Smooth = true;
-				IO.textures.Add (IO.LIGHT_TEXTURE_ID, tex);
+				IoManager.textures.Add (IoManager.LIGHT_TEXTURE_ID, tex);
 			}
 			return tex;
 		}
 
-		public static void DeleteWidget(Widget widget) {
-			IO.root.DeleteWidget(widget);
-		}
-
-		/// <summary>
-		/// Draw this instance.
-		/// </summary>
-		public static void Draw() {
-			var delta = IO.clock.ElapsedMilliseconds - IO.refTime;
-			if (delta > IO.refreshTime) {
-				window.Clear ();
-				root.Draw (window);
-				window.Display ();
-				IO.refTime = IO.clock.ElapsedMilliseconds;
-				if (IO.music != null) IO.music.Update (IO.GetTime());
+		static public void Draw() {
+			var time = IoManager.clock.ElapsedMilliseconds;
+			var delta = time - IoManager.referenceTime;
+			if (delta > IoManager.frameTime) {
+				IoManager.window.DispatchEvents();
+				IoManager.window.Clear();
+				IoManager.deltaTime = delta;
+				IoManager.referenceTime = time;
+				IoManager.window.Draw(IoManager.root);
+				IoManager.window.Display();
+				if (IoManager.music != null) IoManager.music.Update (IoManager.Time);
+			}
+			else {
+				// Wait a bit, no need to use 100% CPU
+				System.Threading.Thread.Sleep((int)(IoManager.frameTime - delta));
 			}
 		}
 
+		static public Font DefaultFont { 
+			get { return IoManager.LoadFont(IoManager.DefaultFontId); }
+		}
+
+		static public string DefaultFontId { 
+			get; 
+			set;
+		}
+
 		/// <summary>
-		/// Returns the milliseconds since the last call of Output.Draw()
+		/// Returns the number of milliseconds since the last call of Draw.
 		/// </summary>
-		/// <returns>The delta.</returns>
-		public static int GetDelta() {
-			return (int)(IO.clock.ElapsedMilliseconds - IO.refTime);
+		static public int DeltaTime { 
+			get { return (int)deltaTime; }
+		}
+
+		/// <summary>
+		/// Sets how many times per second to update the scene
+		/// </summary>
+		static public int FPS { 
+			set { IoManager.frameTime = 1000 / value; }
+		}
+
+		static private string GetAssetPath(string file) {
+			return IoManager.AssetDirectory + System.IO.Path.DirectorySeparatorChar + file;
 		}
 
 		public static Inputs GetInputs() {
 			window.DispatchEvents ();
-			IO.CheckKeyboard (); // KeyPressed is unrealiable, it inserts delays
+			IoManager.CheckKeyboard (); // KeyPressed is unrealiable, it inserts delays
 			inputRes.Command = inputs.Command;
 			inputRes.Unicode = inputs.Unicode;
 			inputRes.MouseX = inputs.MouseX;
@@ -185,73 +246,87 @@ namespace WizardsDuel.Io
 		}
 
 		/// <summary>
-		/// Returns the number of milliseconds since the initialization
-		/// </summary>
-		/// <returns>The time.</returns>
-		public static long GetTime() {
-			return (long)IO.refTime;
-		}
-
-		/// <summary>
 		/// Manage keypressed events
 		/// </summary>
 		/// <param name="sender">Sender.</param>
 		/// <param name="e">Arguments.</param>
 		private static void KeyPressed(object sender, KeyEventArgs e) {
 			if (e.Code == Keyboard.Key.Left || e.Code == Keyboard.Key.Numpad4) {
-				IO.inputs.Command = InputCommands.LEFT;
+				IoManager.inputs.Command = InputCommands.LEFT;
 			}
 			else if (e.Code == Keyboard.Key.Right || e.Code == Keyboard.Key.Numpad6) {
-				IO.inputs.Command = InputCommands.RIGHT;
+				IoManager.inputs.Command = InputCommands.RIGHT;
 			}
 			else if (e.Code == Keyboard.Key.Up || e.Code == Keyboard.Key.Numpad8) {
-				IO.inputs.Command = InputCommands.UP;
+				IoManager.inputs.Command = InputCommands.UP;
 			}
 			else if (e.Code == Keyboard.Key.Down || e.Code == Keyboard.Key.Numpad2) {
-				IO.inputs.Command = InputCommands.DOWN;
+				IoManager.inputs.Command = InputCommands.DOWN;
 			}
 			else if (e.Code == Keyboard.Key.Numpad7) {
-				IO.inputs.Command = InputCommands.UP_LEFT;
+				IoManager.inputs.Command = InputCommands.UP_LEFT;
 			}
 			else if (e.Code == Keyboard.Key.Numpad9) {
-				IO.inputs.Command = InputCommands.UP_RIGHT;
+				IoManager.inputs.Command = InputCommands.UP_RIGHT;
 			}
 			else if (e.Code == Keyboard.Key.Numpad1) {
-				IO.inputs.Command = InputCommands.DOWN_LEFT;
+				IoManager.inputs.Command = InputCommands.DOWN_LEFT;
 			}
 			else if (e.Code == Keyboard.Key.Numpad3) {
-				IO.inputs.Command = InputCommands.DOWN_RIGHT;
+				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
 			}
 			else if (e.Code == Keyboard.Key.Tab) {
-				IO.inputs.Command = InputCommands.TOGGLE_GRID;
+				IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
 			}
 		}
 
 		public static void Initialize(string title, int width=800, int height=600) {
-			window = new RenderWindow(new VideoMode((uint)width, (uint)height, 32), title);
-			window.Closed += new EventHandler(IO.OnClosed);
-			window.MouseMoved += new EventHandler<MouseMoveEventArgs> (IO.MouseMove);
-			window.MouseButtonPressed += new EventHandler<MouseButtonEventArgs> (IO.MousePressed);
-			window.KeyPressed += new EventHandler<KeyEventArgs>(IO.KeyPressed);
-			window.TextEntered += new EventHandler<TextEventArgs> (IO.TextEntered);
-			IO.FPS = 60f;
-			IO.clock.Start ();
+			IoManager.window = new RenderWindow(new VideoMode((uint)width, (uint)height, 32), title);
+			IoManager.window.Closed += IoManager.OnClosed;
+			IoManager.IsRunning = true;
+			IoManager.AssetDirectory = "Assets";
+			IoManager.root = new Frame();
+			IoManager.clock = new Stopwatch();
+			IoManager.clock.Start();
+			IoManager.FPS = 60;
+
+			//IoManager.root.X = 64;
+
+			IoManager.window.Closed += new EventHandler(IoManager.OnClosed);
+			//IoManager.window.MouseMoved += new EventHandler<MouseMoveEventArgs> (IoManager.MouseMove);
+			IoManager.window.MouseButtonPressed += new EventHandler<MouseButtonEventArgs> (IoManager.MousePressed);
+			IoManager.window.KeyPressed += new EventHandler<KeyEventArgs>(IoManager.KeyPressed);
+			//IoManager.window.TextEntered += new EventHandler<TextEventArgs> (IoManager.TextEntered);
+		}
+
+		static public bool IsRunning { 
+			get; 
+			set;
 		}
 
 		/// <summary>
 		/// Loads a font from file.
 		/// </summary>
 		/// <returns>The font.</returns>
-		/// <param name="fontFile">Font file.</param>
+		/// <param name="fileName">Font file.</param>
 		/// <param name="size">The font Size, it is in fact used to set the smoothin for a specific mipmap.</param>
-		public static Font LoadFont(string fontFile, int size = 24) {
-			Font font;
-			if (IO.fonts.TryGetValue (fontFile, out font) == false) {
-				font = new Font (ASSETS_DIRECTORY + fontFile);
-				IO.fonts.Add (fontFile, font);
+		public static Font LoadFont(string fileName, int size = 24) {
+			Font res;
+			try {
+				if (IoManager.fonts.TryGetValue (fileName, out res) == false) {
+					var path = IoManager.GetAssetPath(fileName);
+					res = new Font(path);
+					IoManager.fonts.Add(fileName, res);
+					if (IoManager.fonts.Count == 1) {
+						IoManager.DefaultFontId = fileName;
+					}
+				}
+				res.GetTexture ((uint)size).Smooth = false;
+			} catch (Exception ex) {
+				Logger.Warning ("IO", "LoadFont", "Unable to load " + fileName + ": " + ex.ToString());
+				res = null;
 			}
-			font.GetTexture ((uint)size).Smooth = false;
-			return font;
+			return res;
 		}
 
 
@@ -260,21 +335,17 @@ namespace WizardsDuel.Io
 		/// </summary>
 		/// <param name="fileName">File name.</param>
 		public static BackgroundMusic LoadMusic(string fileName) {
-			//var music = new SFML.Audio.Music("Assets\\WIZARDDUEL_WD_indietheme_8bit.ogg");
-			//music.Play ();
-			//return null;
 			try {
-				if (IO.music != null && IO.music.FileName == fileName) {
+				if (IoManager.music != null && IoManager.music.FileName == fileName) {
 					Logger.Info ("IO", "LoadMusic","Already loaded " + fileName);
 				} else {
-					//var mus = new Music(ASSETS_DIRECTORY + fileName);
-					var b = new SoundBuffer(ASSETS_DIRECTORY + fileName);
+					var path = IoManager.GetAssetPath(fileName);
 					var mus = new Sound();
-					mus.SoundBuffer = new SoundBuffer(ASSETS_DIRECTORY + fileName);
-					IO.music = new BackgroundMusic(mus, fileName);
+					mus.SoundBuffer = new SoundBuffer(path);
+					IoManager.music = new BackgroundMusic(mus, fileName);
 					Logger.Info ("IO", "LoadMusic","loaded music " + fileName);
 				}
-				return IO.music;
+				return IoManager.music;
 			} catch (Exception ex) {
 				Logger.Warning ("IO", "LoadMusic", "Unable to load " + fileName + ": " + ex.ToString());
 				return null;
@@ -285,30 +356,43 @@ namespace WizardsDuel.Io
 		/// Loads a sound effect from file.
 		/// </summary>
 		/// <returns>The sfx.</returns>
-		/// <param name="soundFile">Sound file.</param>
-		public static Sound LoadSound(string soundFile) {
-			Sound sound;
-			if (IO.sounds.TryGetValue (soundFile, out sound) == false) {
-				sound = new Sound ();
-				sound.SoundBuffer = new SoundBuffer (ASSETS_DIRECTORY + soundFile);
-				IO.sounds.Add (soundFile, sound);
+		public static Sound LoadSound(string fileName) {
+			Sound res;
+			if (IoManager.sounds.TryGetValue(fileName, out res) == false) {
+				try {
+					var path = IoManager.GetAssetPath(fileName);
+					res = new Sound(new SoundBuffer(path));
+					IoManager.sounds.Add(fileName, res);
+				}
+				catch (Exception ex) {
+					// TODO log exception
+					Console.Write(ex.ToString());
+					res = null;
+				}
 			}
-			return sound;
+			return res;
 		}
 
 		/// <summary>
 		/// Loads a texture from file.
 		/// </summary>
 		/// <returns>The texture.</returns>
-		/// <param name="texFile">Texture file.</param>
-		public static Texture LoadTexture(string texFile, bool smooth = false) {
-			Texture tex;
-			if (IO.textures.TryGetValue (texFile, out tex) == false) {
-				tex = new Texture (ASSETS_DIRECTORY + texFile);
-				tex.Smooth = smooth;
-				IO.textures.Add (texFile, tex);
+		public static Texture LoadTexture(string fileName, bool smooth = false) {
+			Texture res;
+			if (IoManager.textures.TryGetValue(fileName, out res) == false) {
+				try {
+					var path = IoManager.GetAssetPath(fileName);
+					res = new Texture(path);
+					res.Smooth = smooth;
+					IoManager.textures.Add(fileName, res);
+				}
+				catch (Exception ex) {
+					// TODO log exception
+					Console.Write(ex.ToString());
+					res = null;
+				}
 			}
-			return tex;
+			return res;
 		}
 
 		/// <summary>
@@ -317,8 +401,8 @@ namespace WizardsDuel.Io
 		/// <param name="sender">Sender.</param>
 		/// <param name="e">Event.</param>
 		private static void MouseMove(object sender, MouseMoveEventArgs e) {
-			IO.inputs.MouseX = e.X;
-			IO.inputs.MouseY = e.Y;
+			IoManager.inputs.MouseX = e.X;
+			IoManager.inputs.MouseY = e.Y;
 		}
 
 		/// <summary>
@@ -328,10 +412,10 @@ namespace WizardsDuel.Io
 		/// <param name="e">Event.</param>
 		private static void MousePressed(object sender, MouseButtonEventArgs e) {
 			if (e.Button == Mouse.Button.Left) {
-				IO.inputs.Command = InputCommands.MOUSE_LEFT;
+				IoManager.inputs.Command = InputCommands.MOUSE_LEFT;
 			}
 			else if (e.Button == Mouse.Button.Right) {
-				IO.inputs.Command = InputCommands.MOUSE_RIGHT;
+				IoManager.inputs.Command = InputCommands.MOUSE_RIGHT;
 			}
 		}
 
@@ -341,22 +425,22 @@ namespace WizardsDuel.Io
 		/// <param name="sender">Sender.</param>
 		/// <param name="e">Event.</param>
 		private static void OnClosed(object sender, EventArgs e) {
-			IO.inputs.Command = InputCommands.QUIT;
-			var window = (RenderWindow)sender;
-			window.Close();
+			IoManager.inputs.Command = InputCommands.QUIT;
+			((RenderWindow)sender).Close();
+			IoManager.IsRunning = false;
 		}
 
 		public static void PlayMusic(string loop) {
-			if (IO.music != null) {
-				IO.music.Play (loop, IO.GetTime());
+			if (IoManager.music != null) {
+				IoManager.music.Play (loop, IoManager.Time);
 			} else {
 				Logger.Info ("IO", "PlayMusic", "No Music loaded");
 			}
 		}
 
 		public static void SetNextMusicLoop(string loop) {
-			if (IO.music != null) {
-				IO.music.SetNextLoop (loop);
+			if (IoManager.music != null) {
+				IoManager.music.SetNextLoop (loop);
 			}
 		}
 
@@ -366,7 +450,7 @@ namespace WizardsDuel.Io
 		/// <param name="soundFile">Sound file.</param>
 		public static void PlaySound(string soundFile) {
 			try {
-				IO.sounds[soundFile].Play();
+				IoManager.sounds[soundFile].Play();
 			} catch (Exception ex) {
 				Logger.Warning ("IO", "PlaySound", "Unable to play " + soundFile + ": " + ex.ToString());
 			}
@@ -374,17 +458,17 @@ namespace WizardsDuel.Io
 
 		private static void TextEntered(object sender, TextEventArgs e) {
 			Logger.Info ("IO", "TextEntered", "Text " + e.Unicode);
-			IO.inputs.Unicode = e.Unicode;
-			Logger.Info ("IO", "TextEntered", "Text " + IO.inputs.Unicode);
+			IoManager.inputs.Unicode = e.Unicode;
+			Logger.Info ("IO", "TextEntered", "Text " + IoManager.inputs.Unicode);
 		}
 
 		/// <summary>
-		/// Sets the FPS limit
+		/// Returns the current reference time, that is, the number of milliseconds from
+		/// start since the last call of Draw.
 		/// </summary>
-		public static float FPS {
-			set { IO.refreshTime = (long)(1f / value * 1000f);}
+		public static long Time {
+			get { return referenceTime; }
 		}
-
 	}
 }
 

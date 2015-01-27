@@ -29,25 +29,27 @@ namespace WizardsDuel.Io
 	}
 
 	public class Emitter {
-		public List<Animation> animators = new List<Animation> ();
+		public List<Animator> animators = new List<Animator> ();
 		public int currentParticles = 0;
 		public int maxParticles = 0;
-		public Vector2f Origin = new Vector2f (0f, 0f);
+		public Vector2f Offset = new Vector2f (0f, 0f);
 		private ParticleSystem particleSystem = null;
 		private List<ParticleTemplate> particleTemplates = new List<ParticleTemplate> ();
 		public int ParticleTTL = 0;
 		private int refDeltaTime = 0;
 		public int SpawnDeltaTime = 0;
 		public int SpawnCount = 0;
+		public int StartDelay = 0;
 		public int TTL = 0;
 		private List<Spawner> variators = new List<Spawner>();
 
 		public Emitter(ParticleSystem ps, int startDelay = 0) {
 			this.particleSystem = ps;
 			this.refDeltaTime -= startDelay;
+			this.StartDelay = startDelay;
 		}
 
-		public void AddAnimator(Animation animator) {
+		public void AddAnimator(Animator animator) {
 			this.animators.Add (animator);
 		}
 
@@ -61,14 +63,9 @@ namespace WizardsDuel.Io
 			this.variators.Add (variator);
 		}
 
-		public void Update(int deltaTime) {
-			this.TTL -= deltaTime;
-			this.refDeltaTime += deltaTime;
-			if (this.TTL > 0 && this.refDeltaTime > this.SpawnDeltaTime) {
-				//this.SpawnDeltaTime = this.refDeltaTime - this.SpawnDeltaTime;
-				this.refDeltaTime = this.refDeltaTime - this.SpawnDeltaTime;
-				this.Spawn();
-			}
+		public Vector2f Position {
+			get;
+			set;
 		}
 
 		protected void Spawn() {
@@ -91,9 +88,12 @@ namespace WizardsDuel.Io
 				var template = this.particleTemplates [rnd.Next (this.particleTemplates.Count)];
 				var particle = new Particle (template.texture, template.textureRect);
 				this.particleSystem.AddParticle (particle);
-				particle.SetPosition (this.Origin.X, this.Origin.Y);
-				particle.Scale = template.scale;
+				particle.Position = new Vector2f(this.Position.X, this.Position.Y);
+				particle.ScaleX = template.scale;
+				particle.ScaleY = template.scale;
 				particle.TTL = this.ParticleTTL;
+				particle.ZIndex = this.ZIndex;
+				//Logger.Debug ("Emitter", "Spawn", "Creating particle at: "  + this.Offset.ToString());
 
 				foreach (var variator in this.variators) {
 					variator.Apply (particle);
@@ -101,10 +101,36 @@ namespace WizardsDuel.Io
 				foreach (var animator in this.animators) {
 					particle.AddAnimator (animator);
 				}
-
-
 			}
 		}
+
+		public void Update(int deltaTime) {
+			this.TTL -= deltaTime;
+			this.refDeltaTime += deltaTime;
+			if (this.TTL > 0 && this.refDeltaTime > this.SpawnDeltaTime) {
+				//this.SpawnDeltaTime = this.refDeltaTime - this.SpawnDeltaTime;
+				this.refDeltaTime = this.refDeltaTime - this.SpawnDeltaTime;
+				this.Spawn();
+			}
+		}
+
+		override public string ToString() {
+			var res = String.Format (
+				"<emitter offsetX=\"{0}\" offsetY=\"{1}\" particleTtl=\"{2}\" spawnCount=\"{3}\" spawnDeltaTime=\"{4}\" startDelay=\"{5}\" ttl=\"{6}\" zIndex=\"{7}\">", 
+				this.Offset.X,
+				this.Offset.Y,
+				this.ParticleTTL,
+				this.SpawnCount,
+				this.SpawnDeltaTime,
+				this.StartDelay,
+				this.TTL,
+				this.ZIndex
+			);
+			res += "</emitter>";
+			return res;
+		}
+
+		public int ZIndex { get; set; }
 	}
 
 	public class Spawner {
@@ -139,19 +165,19 @@ namespace WizardsDuel.Io
 	}
 
 	public class BoxSpawner: Spawner {
-		private Vector2f startBox;
-		private Vector2f endBox;
+		private float height;
+		private float width;
 		private Random rnd = new Random();
 
-		public BoxSpawner(Vector2f startBox, Vector2f endBox) {
-			this.startBox = startBox;
-			this.endBox = endBox;
+		public BoxSpawner(float width, float height) {
+			this.height = height;
+			this.width = width;
 		}
 
 		override public void Apply(Particle particle) {
-			var x = this.startBox.X + (float)(rnd.NextDouble ()) * (this.endBox.X - this.startBox.X);
-			var y = this.startBox.Y + (float)(rnd.NextDouble ()) * (this.endBox.Y - this.startBox.Y);
-			particle.SetPosition (x, y);
+			var x = particle.Position.X + (float)(rnd.NextDouble ()) * this.width;
+			var y = particle.Position.Y + (float)(rnd.NextDouble ()) * this.height;
+			particle.Position = new Vector2f(x, y);
 		}
 	}
 
@@ -169,6 +195,19 @@ namespace WizardsDuel.Io
 		override public void Apply(Particle particle) {
 			particle.Color = this.startColor;
 			particle.AddAnimator (new ColorAnimation(this.startColor, this.endColor, this.duration));
+		}
+	}
+
+	public class ColorPickerSpawner: Spawner {
+		private List<Color> colors = new List<Color>();
+
+		public void AddColor(Color color) {
+			this.colors.Add(color);
+		}
+
+		override public void Apply(Particle particle) {
+			var rnd = new Random ();
+			particle.Color = this.colors[rnd.Next(this.colors.Count)];
 		}
 	}
 }

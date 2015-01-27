@@ -16,6 +16,7 @@
 
 using System;
 using WizardsDuel.Utils;
+using WizardsDuel.Io;
 
 namespace WizardsDuel.Game
 {
@@ -82,6 +83,10 @@ namespace WizardsDuel.Game
 			Logger.Debug ("AttackEvent", "Run", this.Actor + " attacks " + this.Target);
 			var rnd = new Random ();
 			this.Actor.OutObject.SetAnimation ("ATTACK");
+			//var facing = (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
+			this.Actor.OutObject.Facing =  (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
+			this.Target.OutObject.Facing =  (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
+			Simulator.Instance.Bleed (Target);
 			return true;
 		}
 	}
@@ -91,6 +96,7 @@ namespace WizardsDuel.Game
 		base (oid, deltaTime) {
 			this.DX = dx;
 			this.DY = dy;
+			//Logger.Debug ("ShiftEvent", "ShiftEvent", "Added to " + oid);
 		}
 
 		public int DX {
@@ -104,6 +110,7 @@ namespace WizardsDuel.Game
 		}
 
 		override public bool Run(Simulator sim) {
+			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
 			sim.CanShift(this.Actor, this.DX, this.DY, true);
 			return true;
 		}

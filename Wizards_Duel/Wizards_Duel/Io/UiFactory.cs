@@ -38,11 +38,11 @@ namespace WizardsDuel.Io
 						LoadBackgroundMusic(widget, pageNode);
 						break;
 					case "icon":
-						IO.AddWidget(UiFactory.LoadIcon(widget, pageNode));
+						IoManager.AddWidget(UiFactory.LoadIcon(widget, pageNode));
 						break;
 					case "worldView":
 						res = UiFactory.LoadWorldView(widget, pageNode);
-						IO.AddWidget (res);
+						IoManager.AddWidget (res);
 						break;
 					default:
 						break;
@@ -59,7 +59,7 @@ namespace WizardsDuel.Io
 			//var music = new SFML.Audio.Music("Assets\\" + XmlUtilities.GetString (widget, "file"));
 			//music.Play ();
 			Logger.Info ("UiFactory", "LoadBackgroundMusic","loaded music: " + "Assets\\" + XmlUtilities.GetString (widget, "file"));
-			var music = IO.LoadMusic(XmlUtilities.GetString (widget, "file"));
+			var music = IoManager.LoadMusic(XmlUtilities.GetString (widget, "file"));
 			if (music != null) {
 				Logger.Info ("UiFactory", "LoadBackgroundMusic","loaded music");
 				try {
@@ -87,10 +87,11 @@ namespace WizardsDuel.Io
 				var scale = XmlUtilities.GetFloat(widget, "scale", 1f);
 				var res = new Icon (
 					XmlUtilities.GetString(widget, "texture"),
-					new IntRect (u, v, width, height),
-					scale
+					new IntRect (u, v, width, height)
 				);
-				res.SetPosition(XmlUtilities.GetInt(widget, "x"), XmlUtilities.GetInt(widget, "y"));
+				res.ScaleX = scale;
+				res.ScaleY = scale;
+				res.Position = new SFML.Window.Vector2f(XmlUtilities.GetInt(widget, "x"), XmlUtilities.GetInt(widget, "y"));
 				return res;
 			} catch (Exception ex) {
 				Logger.Warning ("UiFactory", "LoadIcon", ex.ToString ());
@@ -183,7 +184,7 @@ namespace WizardsDuel.Io
 						gl.GridPadding = 2;
 						gl.OutColor = new Color(0,0,0,128);
 						view.AddLayer(gl);
-						var ol = new ObjectsLayer (width, height);
+						var ol = new ObjectsLayer ();
 						ol.Scale = XmlUtilities.GetFloat(xlayer, "scale", 1f);
 						ol.Blend = UiFactory.GetBlend(xlayer);
 						view.AddLayer (ol, LayerType.OBJECTS);
@@ -227,20 +228,20 @@ namespace WizardsDuel.Io
 			return view;
 		}
 
-		static private RenderStates GetBlend(XmlNode node, string attributeName="blend") {
+		static private BlendMode GetBlend(XmlNode node, string attributeName="blend") {
 			try {
 				var type = node.Attributes.GetNamedItem(attributeName).Value;
 				switch (type) {
 				case "ADD":
-					return new RenderStates(BlendMode.Add);
+					return BlendMode.Add;
 				case "MULTIPLY":
-					return new RenderStates(BlendMode.Multiply);
+					return BlendMode.Multiply;
 				default:
-					return new RenderStates(BlendMode.Alpha);
+					return BlendMode.Alpha;
 				}
 			} catch (Exception ex) {
 				Logger.Warning ("UiFactory", "GetFloat", ex.ToString ());
-				return new RenderStates(BlendMode.Alpha);
+				return BlendMode.Alpha;
 			}
 		}
 

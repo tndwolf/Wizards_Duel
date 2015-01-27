@@ -25,20 +25,22 @@ namespace WizardsDuel.Io
 	/// <summary>
 	/// Base class for layers to be used inside Worldviews
 	/// </summary>
-	public class Layer {
+	public class Layer: Drawable {
 		protected Vector2f center = new Vector2f(0f, 0f);
 		protected float scale = 1.0f;
 
 		public Layer() {
-			this.Blend = new RenderStates (BlendMode.Alpha);
+			this.Blend = BlendMode.Alpha;
 			this.Enabled = true;
+			//this.Scale = 1f;
 		}
 
 		public Layer(int width, int height) {
 			this.Width = width;
 			this.Height = height;
-			this.Blend = new RenderStates (BlendMode.Alpha);
+			this.Blend = BlendMode.Alpha;
 			this.Enabled = true;
+			//this.Scale = 1f;
 		}
 
 		virtual public bool Enabled {
@@ -46,7 +48,7 @@ namespace WizardsDuel.Io
 			set;
 		}
 
-		virtual public RenderStates Blend {
+		virtual public BlendMode Blend {
 			get;
 			set;
 		}
@@ -66,9 +68,11 @@ namespace WizardsDuel.Io
 			set { this.scale = value; }
 		}
 
-		virtual public void Draw(RenderTarget target) {
+		#region Drawable implementation
+		virtual public void Draw(RenderTarget target, RenderStates states) {
 			return;
 		}
+		#endregion
 
 		/// <summary>
 		/// Sets the center of the layer. This point will be drawn in the center of the
@@ -89,31 +93,12 @@ namespace WizardsDuel.Io
 		virtual public void SetCenter(Vector2f center) {
 			this.center = center;
 		}
-
-		/// <summary>
-		/// Gets or sets the center of the layer along the X axis.
-		/// </summary>
-		/// <value>The x.</value>
-		virtual public float X {
-			get;
-			set;
-		}
-
-		/// <summary>
-		/// Gets or sets the center of the layer along the Y axis.
-		/// </summary>
-		/// <value>The y.</value>
-		virtual public float Y {
-			get;
-			set;
-		}
 	}
 
 	/// <summary>
 	/// Simple layer containing only one big texture
 	/// </summary>
 	public class BackgroundLayer: Layer {
-		//protected Color color;
 		protected Texture bgTexture;
 		protected Sprite bgSprite;
 		protected Vector2f bgSize;
@@ -125,23 +110,39 @@ namespace WizardsDuel.Io
 			this.Color = Color.White;
 		}
 
+		virtual protected void AdjustLayer() {
+			this.bgSize.X = this.bgSprite.TextureRect.Width * this.Scale;
+			this.bgSize.Y = this.bgSprite.TextureRect.Height * this.Scale;
+			// TODO verify if that 3 works for any bg size
+			this.bgRepeat = new Vector2i (
+				3 + (int)(this.Width / this.bgSize.X),
+				3 + (int)(this.Height / this.bgSize.Y)
+			);
+			this.bgOffset = new Vector2i (
+				(int)this.center.X % (int)this.bgSize.X,
+				(int)this.center.Y % (int)this.bgSize.Y
+			);
+			this.bgOffset.X -= (int)this.bgSize.X;
+			this.bgOffset.Y -= (int)this.bgSize.Y;
+		}
+
 		public Color Color {
 			get { return this.bgSprite.Color; }
 			set { this.bgSprite.Color = value; }
 		}
 
-		override public void Draw(RenderTarget target) {
+		override public void Draw(RenderTarget target, RenderStates states) {
+			states.BlendMode = this.Blend;
 			var bufferPosition = new Vector2f(this.bgOffset.X, this.bgOffset.Y);
 			for (var y = 0; y < this.bgRepeat.Y; y++) {
 				for (var x = 0; x < this.bgRepeat.X; x++) {
 					this.bgSprite.Position = bufferPosition;
-					target.Draw (this.bgSprite, this.Blend);
+					target.Draw (this.bgSprite, states);
 					bufferPosition.X += this.bgSize.X;
 				}
 				bufferPosition.X = this.bgOffset.X;
 				bufferPosition.Y += this.bgSize.Y;
 			}
-			this.bgSprite.Position = new Vector2f(this.bgOffset.X, this.bgOffset.Y);
 		}
 
 		override public float Scale {
@@ -160,7 +161,7 @@ namespace WizardsDuel.Io
 		/// </summary>
 		/// <param name="texture">The file name of the texture.</param>
 		virtual public void SetBackground(string texture) {
-			this.bgTexture = IO.LoadTexture (texture, true);
+			this.bgTexture = IoManager.LoadTexture (texture, true);
 			this.bgSprite = new Sprite (this.bgTexture);
 			this.AdjustLayer ();
 		}
@@ -202,19 +203,6 @@ namespace WizardsDuel.Io
 			get;
 			set;
 		}
-
-		virtual protected void AdjustLayer() {
-			this.bgSize.X = this.bgTexture.Size.X * this.Scale;
-			this.bgSize.Y = this.bgTexture.Size.Y * this.Scale;
-			this.bgRepeat = new Vector2i (
-				2 + (int)(this.Width / this.bgSize.X),
-				2 + (int)(this.Height / this.bgSize.Y)
-			);
-			this.bgOffset = new Vector2i (
-				-1 * (int)this.center.X % (int)this.bgSize.X,
-				-1 * (int)this.center.Y % (int)this.bgSize.Y
-			);
-		}
 	}
 
 	/// <summary>
@@ -229,16 +217,16 @@ namespace WizardsDuel.Io
 		private int gridPadding = 0;
 
 		private IntRect maskDrawRange = new IntRect(0, 0, 0, 0);
-		private Vector2f maskDrawOffset = new Vector2f (0f, 0f);
 		private Vector2i cellSize = new Vector2i (1, 1);
 
 		public static readonly Color DEFAULT_FILL = new Color (255, 255, 255, 0);
 		public static readonly Color DEFAULT_BORDER = new Color (255, 255, 255, 96);
 
-
 		public GridLayer(int width, int height, int gridWidth, int gridHeight, int cellWidth, int cellHeight): base(width, height) {
 			this.layerTexture = new RenderTexture ((uint)this.Width, (uint)this.Height);
 			this.layerSprite = new Sprite (this.layerTexture.Texture);
+
+			this.Selected = new Vector2i (-1, -1);
 
 			this.cellSize.X = (int)(cellWidth * this.Scale);
 			this.cellSize.Y = (int)(cellHeight * this.Scale);
@@ -255,36 +243,50 @@ namespace WizardsDuel.Io
 		}
 
 		virtual protected void AdjustLayer() {
-			// the subtraction is to take into account one tile less in respect to the top-left edge
-			this.maskDrawOffset.X = -((int)(this.center.X) % this.cellSize.X) - this.cellSize.X + 2*this.GridPadding;
-			this.maskDrawOffset.Y = -((int)(this.center.Y) % this.cellSize.Y) - this.cellSize.Y + 2*this.GridPadding;
-			this.maskDrawRange.Left = (int)(this.center.X / this.cellSize.X) - 1;
-			this.maskDrawRange.Top = (int)(this.center.Y / this.cellSize.Y) - 1;
-			this.maskDrawRange.Width =  (int)(this.Width / this.cellSize.X) + 2;
-			this.maskDrawRange.Height =  (int)(this.Height / this.cellSize.Y) + 2;
+			// the subtraction is to take into account the negative and positive offset
+			this.maskDrawRange.Width =  (int)(this.Width / this.cellSize.X) + 3;
+			this.maskDrawRange.Height =  (int)(this.Height / this.cellSize.Y) + 3;
+			this.maskDrawRange.Left = (int)((this.Width / 2 - this.center.X) / this.cellSize.X) - (this.maskDrawRange.Width - 2) / 2 - 1;
+			this.maskDrawRange.Top = (int)((this.Height/2 - this.center.Y) / this.cellSize.Y) - (this.maskDrawRange.Height - 2) / 2 - 1;
+			//Logger.Debug ("GridLayer", "AdjustLayer", "range: " + this.maskDrawRange.ToString());
 		}
 
-		override public void Draw(RenderTarget target) {
+		override public void Draw(RenderTarget target, RenderStates states) {
 			if (this.Enabled) {
-				this.layerTexture.Clear (Color.Transparent);
-				var bufferPosition = new Vector2f (this.maskDrawOffset.X, this.maskDrawOffset.Y);
+				states.Transform.Translate (this.center);
+				states.BlendMode = this.Blend;
+				var bufferPosition = new Vector2f (this.GridPadding + this.GridBorder, this.GridPadding + this.GridBorder);
+				bufferPosition.X += this.maskDrawRange.Left * this.cellSize.X;
+				bufferPosition.Y += this.maskDrawRange.Top * this.cellSize.Y;
 				for (var y = this.maskDrawRange.Top; y < this.maskDrawRange.Height + this.maskDrawRange.Top; y++) {
 					for (var x = this.maskDrawRange.Left; x < this.maskDrawRange.Width + this.maskDrawRange.Left; x++) {
 						try {
-							bufferPosition.X += this.cellSize.X;
-							if (this.drawGrid [y, x] == true) {
+							if (this.drawGrid [y, x] == true && this.Selected.X == x && this.Selected.Y == y) {
+								this.tile.FillColor = Color.Green;
 								this.tile.Position = bufferPosition;
-								this.layerTexture.Draw (this.tile);
+								target.Draw(this.tile, states);
 							}
+							else if (this.drawGrid [y, x] == true) {
+								this.tile.FillColor = Color.Transparent;
+								this.tile.Position = bufferPosition;
+								target.Draw(this.tile, states);
+							}
+							/*else {
+								this.tile.FillColor = Color.White;
+								this.tile.Position = bufferPosition;
+								target.Draw(this.tile, states);
+							}*/
 						} catch {
-
+							this.tile.FillColor = Color.Red;
+							this.tile.Position = bufferPosition;
+							target.Draw(this.tile, states);
 						}
+						bufferPosition.X += this.cellSize.X;
 					}
-					bufferPosition.X = this.maskDrawOffset.X;
+					bufferPosition.X = this.GridPadding + this.GridBorder;
+					bufferPosition.X += this.maskDrawRange.Left * this.cellSize.X;
 					bufferPosition.Y += this.cellSize.Y;
 				}
-				this.layerTexture.Display ();
-				target.Draw (this.layerSprite, this.Blend);
 			}
 		}
 
@@ -325,6 +327,11 @@ namespace WizardsDuel.Io
 			set { this.tile.OutlineColor = value; }
 		}
 
+		public Vector2i Selected {
+			get;
+			set;
+		}
+
 		/// <summary>
 		/// Sets the center of the layer. This point will be drawn in the center of the
 		/// layer render target
@@ -354,7 +361,7 @@ namespace WizardsDuel.Io
 		}
 	}
 
-	public class Light {
+	public class Light: Drawable {
 		private Color color = new Color(255, 255, 255);
 		private Vector2f position = new Vector2f(0f, 0f);
 
@@ -364,6 +371,7 @@ namespace WizardsDuel.Io
 			this.color = color;
 			this.position = center;
 			this.Radius = radius;
+			this.Texture = null;
 		}
 
 		public Color Color {
@@ -371,19 +379,19 @@ namespace WizardsDuel.Io
 			set { this.color = value; }
 		}
 
-		public void DrawWithOffset(RenderTarget target, Texture texture, float x, float y) {
+		public void Draw(RenderTarget target, RenderStates states) {
 			var circle = new CircleShape (this.Radius);
-			circle.Texture = texture;
+			circle.Texture = this.Texture;
 			circle.FillColor = this.Color;
 			if (Parent != null) {
-				circle.Position = new Vector2f (Parent.CenterX - x - Radius / 2, Parent.CenterY - y - Radius / 2);
+				circle.Position = new Vector2f(Parent.Position.X - this.Radius, Parent.Position.Y - this.Radius);
 				if (Parent.ToBeDeleted) {
 					this.Radius /= 1.5f;
 				}
 			} else {
-				circle.Position = new Vector2f (this.position.X - x, this.position.Y - y);
+				circle.Position = this.Position;
 			}
-			target.Draw(circle);
+			target.Draw(circle, states);
 		}
 
 		public OutObject Parent { 
@@ -404,6 +412,11 @@ namespace WizardsDuel.Io
 		public void SetPosition(float cx, float cy) {
 			this.position = new Vector2f (cx - this.Radius / 2, cy - this.Radius / 2);
 		}
+
+		public Texture Texture {
+			get;
+			set;
+		}
 	}
 
 	/// <summary>
@@ -420,12 +433,13 @@ namespace WizardsDuel.Io
 			this.AmbientLight = new Color (255, 255, 255);
 			this.layerTexture = new RenderTexture ((uint)this.Width, (uint)this.Height);
 			this.layerSprite = new Sprite (this.layerTexture.Texture);
-			this.lightTexture = IO.CreateShadedCircle2 ();
-			this.Blend = new RenderStates (BlendMode.Add);
+			this.lightTexture = IoManager.CreateShadedCircle2 ();
+			this.Blend = BlendMode.Add;
 		}
 
 		public Light AddLight(float x, float y, float radius, Color color) {
 			var light = new Light (new Vector2f (x, y), radius, color);
+			light.Texture = this.lightTexture;
 			this.lights.Add (light);
 			return light;
 		}
@@ -439,25 +453,17 @@ namespace WizardsDuel.Io
 			this.lights.Remove (light);
 		}
 
-		override public void Draw(RenderTarget target) {
+		override public void Draw(RenderTarget target, RenderStates states) {
+			states.Transform.Translate(this.center);
 			this.layerTexture.Clear (this.AmbientLight);
-			//var buffPosition = new Vector2f ();
 			foreach (var light in this.lights) {
-				light.DrawWithOffset (this.layerTexture, this.lightTexture, this.center.X, this.center.Y);
-				/*var circle = new CircleShape (light.Radius);
-				circle.FillColor = light.Color;
-				circle.Texture = this.lightTexture;
-				//circle.Position = light.Position;
-				//buffPosition.X = light.Position.X + this.center.X;
-				//buffPosition.Y = light.Position.Y + this.center.Y;
-				circle.Position = buffPosition;
-				this.layerTexture.Draw (circle);*/
+				this.layerTexture.Draw (light, states);
 			}
 			this.lights.RemoveAll (x => x.Radius < 2);
 			this.layerTexture.Display ();
-			//this.lightSprite = new Sprite (this.layerTexture.Texture);
-			//this.layerSprite.Scale = this.Scale;
-			target.Draw (this.layerSprite, this.Blend);
+			states.Transform.Translate(new Vector2f(-this.center.X, -this.center.Y));
+			states.BlendMode = this.Blend;
+			target.Draw (this.layerSprite, states);
 		}
 
 		override public float Scale {
@@ -471,7 +477,7 @@ namespace WizardsDuel.Io
 		}
 
 		public void SetLightTexture(string texture, int u, int v, int w, int h) {
-			this.lightTexture = IO.LoadTexture (texture);
+			this.lightTexture = IoManager.LoadTexture (texture);
 			//TODO
 		}
 	}
@@ -506,57 +512,53 @@ namespace WizardsDuel.Io
 			this.layerTexture = new RenderTexture ((uint)this.Width, (uint)this.Height);
 			this.layerSprite = new Sprite (this.layerTexture.Texture);
 			this.SetBackground (texture);
-			this.MaskBlend = new RenderStates (BlendMode.Alpha);
+			this.MaskBlend = BlendMode.Alpha;
 		}
 
 		override protected void AdjustLayer() {
 			if (this.DrawBackground) {
 				base.AdjustLayer ();
 			}
-			// the subtraction is to take into account one tile less in respect to the top-left edge
-			this.maskDrawOffset.X = -((int)(this.center.X) % this.cellSize.X) - this.cellSize.X;
-			this.maskDrawOffset.Y = -((int)(this.center.Y) % this.cellSize.Y) - this.cellSize.Y;
-			this.maskDrawRange.Left = (int)(this.center.X / this.cellSize.X) - 1;
-			this.maskDrawRange.Top = (int)(this.center.Y / this.cellSize.Y) - 1;
-			this.maskDrawRange.Width =  (int)(this.Width / this.cellSize.X) + 2;
-			this.maskDrawRange.Height =  (int)(this.Height / this.cellSize.Y) + 2;
+			// the subtraction is to take into account the negative and positive offset
+			this.maskDrawRange.Width =  (int)(this.Width / this.cellSize.X) + 3;
+			this.maskDrawRange.Height =  (int)(this.Height / this.cellSize.Y) + 3;
+			this.maskDrawRange.Left = (int)((this.Width / 2 - this.center.X) / this.cellSize.X) - (this.maskDrawRange.Width - 2) / 2 - 1;
+			this.maskDrawRange.Top = (int)((this.Height/2 - this.center.Y) / this.cellSize.Y) - (this.maskDrawRange.Height - 2) / 2 - 1;
 		}
 
-		public RenderStates MaskBlend {
+		public BlendMode MaskBlend {
 			get;
 			set;
 		}
 
-		override public void Draw(RenderTarget target) {
-			this.layerTexture.Clear (Color.Transparent);
+		override public void Draw(RenderTarget target, RenderStates states) {
 			if (this.DrawBackground) {
-				base.Draw (this.layerTexture);
+				base.Draw (target, states);
 			}
-			var bufferPosition = new Vector2f (this.maskDrawOffset.X, this.maskDrawOffset.Y);
-			var oldPosition = new Vector2f (0f, 0f);
+			states.Transform.Translate (this.center);
+			states.BlendMode = this.Blend;
+			var bufferPosition = new Vector2f ();
+			bufferPosition.X += this.maskDrawRange.Left * this.cellSize.X;
+			bufferPosition.Y += this.maskDrawRange.Top * this.cellSize.Y;
 			for (var y = this.maskDrawRange.Top; y < this.maskDrawRange.Height + this.maskDrawRange.Top; y++) {
 				for (var x = this.maskDrawRange.Left; x < this.maskDrawRange.Width + this.maskDrawRange.Left; x++) {
-					bufferPosition.X += this.cellSize.X;
 					try {
 						var t = this.maskMap [y, x];
 						bufferPosition.X += t.dx;
 						bufferPosition.Y += t.dy;
 						t.tileSprite.Position = bufferPosition;
-						this.layerTexture.Draw (t.tileSprite, this.MaskBlend);
+						target.Draw (t.tileSprite, states);
 						bufferPosition.X -= t.dx;
 						bufferPosition.Y -= t.dy;
 					} catch {
 						defaultTile.tileSprite.Position = bufferPosition;
-						this.layerTexture.Draw (defaultTile.tileSprite, this.MaskBlend);
-						//this.layerTexture.Draw (this.maskMap [0, 0].tileSprite, this.blendMode);
-						//Console.WriteLine ("Errore al tile: " + x.ToString() + " " + y.ToString() + " " + this.maskMap.ToString());
+						target.Draw (defaultTile.tileSprite, states);
 					}
+					bufferPosition.X += this.cellSize.X;
 				}
-				bufferPosition.X = this.maskDrawOffset.X;
+				bufferPosition.X = this.maskDrawRange.Left * this.cellSize.X;
 				bufferPosition.Y += this.cellSize.Y;
 			}
-			this.layerTexture.Display ();
-			target.Draw (this.layerSprite, this.Blend);
 		}
 
 		public bool DrawBackground {
@@ -592,7 +594,7 @@ namespace WizardsDuel.Io
 				this.DrawBackground = false;
 				this.bgSprite = new Sprite ();
 			} else {
-				this.bgTexture = IO.LoadTexture (texture, true);
+				this.bgTexture = IoManager.LoadTexture (texture, true);
 				this.bgSprite = new Sprite (this.bgTexture);
 				this.DrawBackground = true;
 				this.AdjustLayer ();
@@ -614,7 +616,7 @@ namespace WizardsDuel.Io
 			this.GridWidth = gridWidth;
 			this.GridHeight = gridHeight;
 			maskMap = new _Tile[gridHeight, gridWidth];
-			this.tileset = IO.LoadTexture (texture);
+			this.tileset = IoManager.LoadTexture (texture);
 			this.AdjustLayer ();
 		}
 
@@ -654,24 +656,19 @@ namespace WizardsDuel.Io
 	/// for homogeneity
 	/// </summary>
 	public class ObjectsLayer: Layer {
-		private RenderTexture layerTexture;
-		private Sprite layerSprite;
 		private List<OutObject> objects = new List<OutObject>();
 
-		public ObjectsLayer(int width, int height): base (width, height) {
-			this.layerTexture = new RenderTexture ((uint)this.Width, (uint)this.Height);
-			this.layerSprite = new Sprite (this.layerTexture.Texture);
-		}
-
 		public OutObject AddObject(OutObject oo) {
-			oo.Scale = this.Scale;
+			oo.ScaleX = this.Scale;
+			oo.ScaleY = this.Scale;
 			this.objects.Add (oo);
 			return oo;
 		}
 
 		public OutObject AddObject(string spriteId, int s, int t, int w, int h) {
 			OutObject oo = new OutObject (spriteId, new IntRect (s, t, w, h));
-			oo.Scale = this.Scale;
+			oo.ScaleX = this.Scale;
+			oo.ScaleY = this.Scale;
 			this.objects.Add (oo);
 			return oo;
 		}
@@ -681,27 +678,12 @@ namespace WizardsDuel.Io
 			this.objects.Remove (obj);
 		}
 
-		override public void Draw(RenderTarget target) {
+		override public void Draw(RenderTarget target, RenderStates states) {
 			this.objects.Sort ();
-			this.layerTexture.Clear (Color.Transparent);
+			states.Transform.Translate(this.center);
+			states.BlendMode = this.Blend;
 			foreach (var obj in this.objects) {
-				obj.DrawWithOffset (this.layerTexture, this.center.X, this.center.Y);
-			}
-			this.layerTexture.Display ();
-			target.Draw (this.layerSprite, this.Blend);
-		}
-
-		override public float Scale {
-			get {
-				return base.Scale;
-			}
-			set {
-				base.Scale = value;
-				foreach (var obj in this.objects) {
-					obj.Scale = value;
-					obj.X *= value;
-					obj.Y *= value;
-				}
+				target.Draw (obj, states);
 			}
 		}
 	}

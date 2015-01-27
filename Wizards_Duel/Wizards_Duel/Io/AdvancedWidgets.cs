@@ -22,10 +22,11 @@ using WizardsDuel.Utils;
 
 namespace WizardsDuel.Io
 {
-
+	#region animations
 	public class AnimationFrame {
 		public int duration; // duration in millis
 		public IntRect frame;
+		public Vector2f offset;
 
 		public AnimationFrame(int u, int v, int width, int height, int duration) {
 			this.frame = new IntRect (u, v, width, height);
@@ -34,11 +35,13 @@ namespace WizardsDuel.Io
 
 		override public string ToString() {
 			return string.Format(
-				"<frame x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" duration=\"%d\"/>", 
+				"<frame x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" offsetX=\"%d\" offsetY=\"%d\" duration=\"%d\"/>", 
 				frame.Top, 
 				frame.Left, 
 				frame.Width, 
 				frame.Height, 
+				offset.X,
+				offset.Y,
 				duration
 			);
 		}
@@ -58,11 +61,12 @@ namespace WizardsDuel.Io
 		public void SetAnimation(OutObject obj) {
 			var sa = new SpriteAnimation ();
 			foreach (var frame in this.frames) {
-				sa.AppendSprite (frame.frame, frame.duration);
+				sa.AppendSprite (frame.frame, frame.offset, frame.duration);
 			}
 			obj.AddAnimator (sa);
 		}
 	}
+	#endregion
 
 	public class OutObject : Icon, IComparable {
 		public const string IDLE_ANIMATION = "IDLE";
@@ -70,11 +74,13 @@ namespace WizardsDuel.Io
 		protected bool alreadyAnimated = false;
 		public Dictionary<string, AnimationDefinition> animations = new Dictionary<string, AnimationDefinition>();
 		protected Vector2f halfSize = new Vector2f (0f, 0f);
+		protected List<ParticleSystem> particles = new List<ParticleSystem> ();
 		protected float scale = 1f;
 
-		public OutObject(string texture, IntRect srcRect, float scale = 1f) : base (texture, srcRect, scale) {
-			this.halfSize.X = srcRect.Width / 2f;
-			this.halfSize.Y = srcRect.Height / 2f;
+		protected bool primaVolta = true;
+
+		public OutObject(string texture, IntRect srcRect) : base (texture, srcRect) {
+			this.updateFacing = true;
 		}
 
 		public void AddAnimation(string id, AnimationDefinition animation) {
@@ -87,8 +93,12 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		public void AddParticleSystem(ParticleSystem ps) {
+			this.particles.Add (ps);
+		}
+
 		virtual public void Animate() {
-			List<Animation> newAnimators = new List<Animation> ();
+			List<Animator> newAnimators = new List<Animator> ();
 			foreach (var animator in base.animators) {
 				animator.Update (this);
 				if (animator.HasEnded == false) {
@@ -103,11 +113,11 @@ namespace WizardsDuel.Io
 		}
 
 		public float CenterX {
-			get { return this.X + this.halfSize.X; }
+			get { return this.X + this.Width/2f; }
 		}
 
 		public float CenterY {
-			get { return this.Y + this.halfSize.Y; }
+			get { return this.Y + this.Height/2f; }
 		}
 
 		/// <summary>
@@ -119,7 +129,7 @@ namespace WizardsDuel.Io
 			try {
 				var comp = (OutObject) obj;
 				if (this.ZIndex == comp.ZIndex) {
-					return this.CenterY.CompareTo (comp.CenterY);
+					return this.FeetY.CompareTo (comp.FeetY);
 				} else {
 					return this.ZIndex.CompareTo (comp.ZIndex);
 				}
@@ -129,27 +139,54 @@ namespace WizardsDuel.Io
 			}
 		}
 
-		public void DrawWithOffset(RenderTarget target, float x, float y) {
+		override public Facing Facing {
+			get { return this.facing; }
+			set {
+				// This is f****** stupid, I know
+				// but facing MUST be inverted to work correctly
+				// you cannot just flip the vector later on or
+				// correct the facing just after initialization when everything
+				// should not change...
+				if (this.facing == value) {
+					this.facing = (value == Facing.LEFT)? Facing.RIGHT : Facing.LEFT;
+					this.updateFacing = true;
+				}
+			}
+		}
+
+		override public void Draw(RenderTarget target, RenderStates states) {
+			//base.Draw(target, states);
 			if (this.alreadyAnimated == false) {
 				this.Animate ();
 			}
 			this.alreadyAnimated = false;
 			if (this.updateFacing == true) {
+				// XXX note that the facing vector is also used to center the
+				// object inside a cell, see the Translate call a few lines below
 				this.sprite.Scale = new Vector2f (-this.sprite.Scale.X, this.sprite.Scale.Y);
-				switch (this.Facing) {
-				case Facing.LEFT:
-					this.offset = new Vector2f (this.Width, 0f);
-					break;
-				case Facing.RIGHT:
-					this.offset = new Vector2f (0f, 0f);
-					break;
-				default:
-					break;
+				if (this.Facing == Facing.LEFT) {
+					this.facingOffset = new Vector2f (-this.Width/2f, -this.Height/2f);
+				} else {
+					this.facingOffset = new Vector2f (this.Width/2f, -this.Height/2f);
 				}
 				this.updateFacing = false;
+				this.primaVolta = false;
 			}
-			this.sprite.Position = new Vector2f (this.X - x + this.offset.X, this.Y - y + this.offset.Y);
-			target.Draw(this.sprite);
+			var cs = new CircleShape (1);
+			cs.Position = this.Position;
+			//target.Draw (cs, states);
+			states.Transform.Translate(this.facingOffset);
+			states.Transform.Translate(this.Padding);
+			target.Draw(this.sprite, states);
+			//Logger.Debug ("OutObject", "Draw", "Drawing at " + this.Position.ToString ());
+			foreach (var ps in this.particles) {
+				ps.Position = this.Position;
+			}
+		}
+
+		public float FeetY {
+			get { return this.Y + this.Height; }
+			private set { this.Y = value - this.Height; }
 		}
 
 		/// <summary>
@@ -166,25 +203,27 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		/*override public float Height {
+			set { 
+				base.Height = value;
+				if (this.Facing == Facing.LEFT) {
+					this.facingOffset = new Vector2f (-this.Width/2f, -this.Height/2f);
+				} else {
+					this.facingOffset = new Vector2f (this.Width/2f, -this.Height/2f);
+				}
+			}
+		}*/
+
 		public string IdleAnimation {
 			get;
 			set;
 		}
 
-		override public bool IsAnimating {
+		virtual public bool IsAnimating {
 			get { return !this.IsInIdle; }
 		}
 
 		public bool IsInIdle { get; set; }
-
-		override public float Scale {
-			set {
-				base.Scale = value;
-				this.halfSize.X *= value;
-				this.halfSize.Y *= value;
-				this.scale = value;
-			}
-		}
 
 		/// <summary>
 		/// Sets the animation that will be used in the following frames
@@ -200,6 +239,17 @@ namespace WizardsDuel.Io
 		}
 
 		public bool ToBeDeleted { get; set; }
+
+		/*override public float Width {
+			set { 
+				base.Width = value;
+				if (this.Facing == Facing.LEFT) {
+					this.facingOffset = new Vector2f (-this.Width/2f, -this.Height/2f);
+				} else {
+					this.facingOffset = new Vector2f (this.Width/2f, -this.Height/2f);
+				}
+			}
+		}*/
 
 		public int ZIndex {
 			get;
