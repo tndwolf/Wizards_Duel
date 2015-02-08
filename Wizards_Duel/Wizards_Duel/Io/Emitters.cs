@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using SFML.Graphics;
 using SFML.Window;
 using WizardsDuel.Utils;
+using WizardsDuel.Game;
 
 namespace WizardsDuel.Io
 {
@@ -88,6 +89,7 @@ namespace WizardsDuel.Io
 				var template = this.particleTemplates [rnd.Next (this.particleTemplates.Count)];
 				var particle = new Particle (template.texture, template.textureRect);
 				this.particleSystem.AddParticle (particle);
+				//particle.Origin = new Vector2f(particle.Width/2, particle.Height/2);
 				particle.Position = new Vector2f(this.Position.X, this.Position.Y);
 				particle.ScaleX = template.scale;
 				particle.ScaleY = template.scale;
@@ -99,7 +101,7 @@ namespace WizardsDuel.Io
 					variator.Apply (particle);
 				}
 				foreach (var animator in this.animators) {
-					particle.AddAnimator (animator);
+					particle.AddAnimator (animator.Clone());
 				}
 			}
 		}
@@ -144,7 +146,6 @@ namespace WizardsDuel.Io
 		private float minForce;
 		private float minAngle;
 		private float deltaAngle;
-		private Random rnd = new Random();
 
 		public BurstSpawner(float maxForce, float minForce = 0f, float minAngle = 0f, float maxAngle = (float)Math.PI * 2) {
 			this.deltaForce = maxForce - minForce;
@@ -154,8 +155,8 @@ namespace WizardsDuel.Io
 		}
 
 		override public void Apply(Particle particle) {
-			var force = this.minForce + (float)(rnd.NextDouble ()) * this.deltaForce;
-			var angle = this.minAngle + (float)(rnd.NextDouble ()) * this.deltaAngle;
+			var force = this.minForce + Simulator.Instance.Random() * this.deltaForce;
+			var angle = this.minAngle + Simulator.Instance.Random() * this.deltaAngle;
 
 			var forceX = force * (float)Math.Cos (angle);
 			var forceY = force * (float)Math.Sin (angle);
@@ -167,7 +168,6 @@ namespace WizardsDuel.Io
 	public class BoxSpawner: Spawner {
 		private float height;
 		private float width;
-		private Random rnd = new Random();
 
 		public BoxSpawner(float width, float height) {
 			this.height = height;
@@ -175,8 +175,8 @@ namespace WizardsDuel.Io
 		}
 
 		override public void Apply(Particle particle) {
-			var x = particle.Position.X + (float)(rnd.NextDouble ()) * this.width;
-			var y = particle.Position.Y + (float)(rnd.NextDouble ()) * this.height;
+			var x = particle.Position.X + Simulator.Instance.Random() * this.width;
+			var y = particle.Position.Y + Simulator.Instance.Random() * this.height;
 			particle.Position = new Vector2f(x, y);
 		}
 	}
@@ -206,8 +206,50 @@ namespace WizardsDuel.Io
 		}
 
 		override public void Apply(Particle particle) {
-			var rnd = new Random ();
-			particle.Color = this.colors[rnd.Next(this.colors.Count)];
+			particle.Color = this.colors[Simulator.Instance.Random(this.colors.Count)];
+		}
+	}
+
+	public class GridSpawner: Spawner {
+		private float cellHeight;
+		private float cellWidth;
+		private float deltaX;
+		private float deltaY;
+		private int gridHeight;
+		private int gridWidth;
+		private int lastSpawn = 0;
+		private int maxSpawn;
+
+		public GridSpawner(int gridWidth, int gridHeight, float cellWidth, float cellHeight, float deltaX=0f, float deltaY=0f) {
+			this.gridHeight = gridHeight;
+			this.gridWidth = gridWidth;
+			this.cellHeight = cellHeight;
+			this.cellWidth = cellWidth;
+			this.deltaX = deltaX;
+			this.deltaY = deltaY;
+			this.maxSpawn = gridWidth * gridHeight - 1;
+		}
+
+		override public void Apply(Particle particle) {
+			var x = particle.Position.X + (this.lastSpawn % this.gridWidth) * this.cellWidth + Simulator.Instance.Random() * deltaX - deltaX/2f;
+			var y = particle.Position.Y + (int)(this.lastSpawn / this.gridHeight) * this.cellHeight + Simulator.Instance.Random() * deltaY - deltaY/2f;
+			particle.Position = new Vector2f(x, y);
+			if (++this.lastSpawn > this.maxSpawn)
+				this.lastSpawn = 0;
+		}
+	}
+
+	public class LightSpawner: Spawner {
+		private Color color;
+		private int radius;
+
+		public LightSpawner(Color color, int radius) {
+			this.color = color;
+			this.radius = radius;
+		}
+
+		override public void Apply(Particle particle) {
+			Simulator.Instance.AddLight (particle, this.radius, this.color);
 		}
 	}
 }

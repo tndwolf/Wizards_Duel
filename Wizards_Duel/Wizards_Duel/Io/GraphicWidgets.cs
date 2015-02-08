@@ -49,6 +49,15 @@ namespace WizardsDuel.Io
 			this.size = new Vector2f (w, h);
 		}
 
+		virtual public int Alpha {
+			get { return this.sprite.Color.A; }
+			set {
+				var buff = this.sprite.Color;
+				buff.A = (byte)value;
+				this.sprite.Color = buff;
+			} 
+		}
+
 		virtual public Color Color {
 			get { return this.sprite.Color; }
 			set { this.sprite.Color = value; } 

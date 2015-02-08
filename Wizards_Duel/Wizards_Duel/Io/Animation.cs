@@ -36,6 +36,16 @@ namespace WizardsDuel.Io
 		protected bool hasEnded = false;
 
 		/// <summary>
+		/// Returns a clone of the object or this same object, depending on implementation.
+		/// Depending on the inner working of the animator a "deep" clone will not have any
+		/// advantage over just passing a reference to the same object, save for memory bloat.
+		/// It is in general advisable to offer a true clone, if in doubt.
+		/// </summary>
+		virtual public Animator Clone() {
+			return this;
+		}
+
+		/// <summary>
 		/// This function is checked by the parent, if the animation has ended then it is removed
 		/// from the list of active animations
 		/// </summary>
@@ -121,7 +131,7 @@ namespace WizardsDuel.Io
 		public Color StartColor { get; set; }
 
 		override public void Update(Widget parent) {
-			var p = (Icon)parent;
+			var p = parent as Icon;
 			this.refTime += IoManager.DeltaTime;
 			if (this.refTime > this.endTime) {
 				this.k = 1.0f;
@@ -136,6 +146,50 @@ namespace WizardsDuel.Io
 					(byte)(this.StartColor.B * (1f-k) + this.EndColor.B * k),
 					(byte)(this.StartColor.A * (1f-k) + this.EndColor.A * k)
 				);
+			}
+		}
+	}
+
+	public class FadeAnimation : Animator {
+		private int fadeInEndTime;
+		private int fadeOutDuration;
+		private int fadeOutStartTime;
+		private int endTime;
+		private int refTime = 0;
+		float k = 0.0f; // position on the animation [0.0 -> 1.0]
+
+		public FadeAnimation(int fadeInDuration, int duration, int fadeOutDuration) {
+			this.fadeInEndTime = fadeInDuration;
+			this.fadeOutDuration = fadeOutDuration;
+			this.fadeOutStartTime = fadeInDuration + duration;
+			this.endTime = duration + fadeInDuration + fadeOutDuration;
+		}
+
+		override public Animator Clone() {
+			var clone = new FadeAnimation (
+				this.fadeInEndTime,
+				this.fadeOutStartTime - this.fadeInEndTime,
+				this.endTime - this.fadeOutStartTime
+			);
+			return clone as Animator;
+		}
+
+		override public void Update(Widget parent) {
+			var p = parent as Icon;
+			this.refTime += IoManager.DeltaTime;
+			if (this.refTime > this.endTime) {
+				this.k = 1.0f;
+				p.Alpha = 0;
+				this.hasEnded = true;
+			} else if (this.refTime > this.fadeOutStartTime) {
+				var refTime1 = this.refTime - this.fadeOutStartTime;
+				this.k = 1.0f - (float)(this.fadeOutDuration - refTime1) / (float)(this.fadeOutDuration);
+				p.Alpha = (int)(255 * (1-k));
+			} else if (this.refTime > this.fadeInEndTime) {
+				p.Alpha = 255;
+			} else {
+				this.k = 1.0f - (float)(this.fadeInEndTime - this.refTime) / (float)(this.fadeInEndTime);
+				p.Alpha = (int)(255 * k);
 			}
 		}
 	}
@@ -235,6 +289,40 @@ namespace WizardsDuel.Io
 				break;
 			}
 			this.refStep = move;
+		}
+	}
+
+	public class ScaleAnimation: Animator {
+		int endRef; // end millis
+		int currRef = 0; // millis from the start
+		public float startScale;
+		public float endScale;
+		float k = 0.0f; // position on the animation [0.0 -> 1.0]
+
+		public ScaleAnimation(int stepMillis, float startScale, float endScale) {
+			this.endRef = stepMillis;
+			this.startScale = startScale;
+			this.endScale = endScale;
+		}
+
+		override public Animator Clone() {
+			var clone = new ScaleAnimation (this.endRef, this.startScale, this.endScale);
+			return clone as Animator;
+		}
+
+		override public void Update(Widget parent) {
+			var par = parent as Icon;
+			this.currRef += IoManager.DeltaTime;
+			if (this.currRef > this.endRef) {
+				par.ScaleX = this.endScale;
+				par.ScaleY = this.endScale;
+				this.hasEnded = true;
+			}
+			else {
+				this.k = 1.0f - (float)(this.endRef - this.currRef) / (float)(this.endRef);
+				par.ScaleX = k * this.endScale + (1 - k) * this.startScale;
+				par.ScaleY = k * this.endScale + (1 - k) * this.startScale;
+			}
 		}
 	}
 
@@ -384,6 +472,38 @@ namespace WizardsDuel.Io
 				parent.Move (moveX - this.refStepX, moveY - this.refStepY);
 				this.refStepX = moveX;
 				this.refStepY = moveY;
+			}
+		}
+	}
+
+	public class ZAnimation: Animator {
+		int endRef; // end millis
+		int currRef = 0; // millis from the start
+		public int startZ;
+		public int endZ;
+		float k = 0.0f; // position on the animation [0.0 -> 1.0]
+
+		public ZAnimation(int stepMillis, int startZ, int endZ) {
+			this.endRef = stepMillis;
+			this.startZ = startZ;
+			this.endZ = endZ;
+		}
+
+		override public Animator Clone() {
+			var clone = new ZAnimation (this.endRef, this.startZ, this.endZ);
+			return clone as Animator;
+		}
+
+		override public void Update(Widget parent) {
+			var par = parent as OutObject;
+			this.currRef += IoManager.DeltaTime;
+			if (this.currRef > this.endRef) {
+				par.ZIndex = this.endZ;
+				this.hasEnded = true;
+			}
+			else {
+				this.k = 1.0f - (float)(this.endRef - this.currRef) / (float)(this.endRef);
+				par.ZIndex = (int)(k * this.endZ + (1 - k) * this.startZ);
 			}
 		}
 	}

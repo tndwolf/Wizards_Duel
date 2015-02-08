@@ -34,7 +34,7 @@ namespace WizardsDuel.Game
 	}
 
 	public class Tile {
-		public TileTemplate template;
+		public TileTemplate Template;
 		public bool InLos { get; set; }
 		public bool IsExplored { get; set; }
 	}
@@ -109,13 +109,39 @@ namespace WizardsDuel.Game
 						var tile = new Tile();
 						tile.InLos = false;
 						tile.IsExplored = false;
-						if (this.tiles.TryGetValue(dungeon[y][x].ToString(), out tile.template) == false) {
-							tile.template = this.tiles[DEFAULT_TILE_ID];
+						if (this.tiles.TryGetValue(dungeon[y][x].ToString(), out tile.Template) == false) {
+							tile.Template = this.tiles[DEFAULT_TILE_ID];
 						}
 						this.SetTile(x, y, tile);
 					}
 				}
 				this.worldView.SetDungeon (dungeon);
+			}
+			catch (Exception ex) {
+				Logger.Warning ("World", "SetMap", ex.ToString());
+			}
+		}
+
+		public void SetMap (string[,] dungeon) {
+			try {
+				// Setup new grid
+				this.GridHeight = dungeon.GetLength(1);
+				this.GridWidth = dungeon.GetLength(0);
+				this.map = new Tile[this.GridHeight, this.GridWidth];
+				var linearDungeon = new string[this.GridHeight];
+				for (int y = 0; y < this.GridHeight-1; y++) {
+					for (int x = 0; x < this.GridWidth-1; x++) {
+						var tile = new Tile();
+						tile.InLos = false;
+						tile.IsExplored = false;
+						if (this.tiles.TryGetValue(dungeon[x,y], out tile.Template) == false) {
+							tile.Template = this.tiles[DEFAULT_TILE_ID];
+						}
+						linearDungeon[y] += dungeon[x,y];
+						this.SetTile(x, y, tile);
+					}
+				}
+				this.worldView.SetDungeon (linearDungeon);
 			}
 			catch (Exception ex) {
 				Logger.Warning ("World", "SetMap", ex.ToString());

@@ -19,6 +19,7 @@ using SFML.Graphics;
 using SFML.Window;
 using WizardsDuel.Io;
 using WizardsDuel.Utils;
+using System.Collections.Generic;
 
 namespace WizardsDuel.Game
 {
@@ -27,20 +28,19 @@ namespace WizardsDuel.Game
 		private int createdEntityCount = 0;
 		public EventDispatcher events;
 		private static Simulator instance;
+		private Random rng = new Random ();
 		private World world = new World();
 
 		public const string BLOOD_PARTICLE = "P_BLEED";
 		public const string DEFAULT_DATA = "Data/Test.xml";
+		public const string DEFAULT_LEVEL = "Data/TestLevel.xml";
 		public const string PLAYER_ID = "Player";
 
 		private Simulator() {}
 
-		public static Simulator Instance
-		{
-			get 
-			{
-				if (instance == null)
-				{
+		public static Simulator Instance {
+			get {
+				if (instance == null) {
 					instance = new Simulator();
 				}
 				return instance;
@@ -75,6 +75,11 @@ namespace WizardsDuel.Game
 			}
 		}
 
+		public void AddLight(Particle particle, float radius, Color color) {
+			var light = this.world.worldView.LightLayer.AddLight (0f, 0f, radius, color);
+			light.Parent = particle;
+		}
+
 		public void Attack(string attackerId, string targetId) {
 			this.events.AppendEvent(new AttackEvent(GetObject(attackerId), GetObject(targetId)));
 		}
@@ -88,7 +93,7 @@ namespace WizardsDuel.Game
 			bool res = false;
 			if (this.world.entities.TryGetValue (oid, out en)) {
 				var tile = this.world.GetTile(x, y);
-				res = tile.template.IsWalkable;
+				res = tile.Template.IsWalkable;
 				if (moveIfPossible && res) {
 					Move (oid, x, y);
 				}
@@ -112,7 +117,7 @@ namespace WizardsDuel.Game
 			try {
 				if (this.world.entities.TryGetValue (oid, out en) && this.world.IsValid(en.X + dx, en.Y + dy)) {
 					var tile = this.world.GetTile(en.X + dx, en.Y + dy);
-					res = tile.template.IsWalkable;
+					res = tile.Template.IsWalkable;
 					if (shiftIfPossible && res) {
 						//Logger.Debug ("Simulator", "CanShift", "shifting " + oid);
 						Shift (oid, dx, dy);
@@ -141,6 +146,7 @@ namespace WizardsDuel.Game
 					}
 				} else {
 					CreateObject (this.createdEntityCount.ToString(), "bp_firefly", gx, gy);
+					//CreateParticleAt ("p_lava", gx, gy);
 				}
 			}
 		}
@@ -167,7 +173,7 @@ namespace WizardsDuel.Game
 					this.events.AppendEvent (new UserEvent (this.events));
 				} else {
 					CreateParticleOn ("P_SPAWN", newEntity);
-					//this.events.AppendEvent (new AiEvent (oid, 12));
+					//this.events.AppendEvent (new AiEvent (oid, 10));
 				}
 				createdEntityCount++;
 			} else {
@@ -234,9 +240,33 @@ namespace WizardsDuel.Game
 			//this.CreateObject ("monster1", "bp_firefly");
 			//this.Move ("monster1", 2, 2);//12,4
 
+			var wf = new WorldFactory ();
+			wf.Initialize (DEFAULT_LEVEL);
+			//wf.Generate ();
+			this.world.SetMap (wf.Generate ());
+
+			this.events.AppendEvent (new AreaAiEvent (10));
+
+			var done = false;
+			do {
+				var x = Random(world.GridWidth);
+				var y = Random(world.GridHeight);
+				if (world.GetTile(x,y).Template.IsWalkable == true) {
+					done = true;
+					this.Move (PLAYER_ID, x, y);
+				}
+			} while(done != true);
+
 			foreach (var r in this.world.worldView.dungeon) {
-				Logger.Info ("Simulator", "Simulator", "r: " + r + " (" + r.Length.ToString() + ")");
+				//Logger.Info ("Simulator", "LoadArea", "r: " + r + " (" + r.Length.ToString() + ")");
 			}
+		}
+
+		public Dictionary<string, Entity> ListEnemies() {
+			var entities = this.world.entities;
+			var res = new Dictionary<string, Entity> (entities);
+			res.Remove (PLAYER_ID);
+			return res;
 		}
 
 		public void Move(string oid, int gx, int gy) {
@@ -249,6 +279,22 @@ namespace WizardsDuel.Game
 				//res.OutObject.Position = new Vector2f ((res.X+1) * this.cellWidth, res.Y * this.cellHeight - this.cellHeight/4);
 				res.OutObject.Position = new Vector2f ((res.X + 0.5f) * this.CellWidth, (res.Y + 0.5f) * this.CellHeight + this.CellObjectOffset);
 			}
+		}
+
+		/// <summary>
+		/// Returns a random float between 0.0 (included) and 1.0 (excluded)
+		/// </summary>
+		public float Random() {
+			return (float)this.rng.NextDouble ();
+		}
+
+		/// <summary>
+		/// Returns a random int between min (included) and max (excluded)
+		/// </summary>
+		/// <param name="max">Maximum value, not included.</param>
+		/// <param name="min">Minimum value, included.</param>
+		public int Random(int max, int min = 0) {
+			return this.rng.Next (min, max);
 		}
 
 		public void SetUserEvent(Event evt) {

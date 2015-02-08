@@ -71,7 +71,7 @@ namespace WizardsDuel.Game
 			foreach (var evt in this.events) {
 				if (evt == this.events [0]) {
 					this.time = evt.StartTime;
-					if (evt.Run (this.simulator) == false) {
+					if (evt.Run () == false) {
 						newEvents.Add (evt);
 					}
 				} else {
@@ -86,7 +86,7 @@ namespace WizardsDuel.Game
 			if (this.nextUserEvent == null) {
 				return false;
 			} else {
-				if (this.nextUserEvent.Run (this.simulator) == false) {
+				if (this.nextUserEvent.Run () == false) {
 					this.AppendEvent (this.nextUserEvent);
 				}
 				this.nextUserEvent = null;

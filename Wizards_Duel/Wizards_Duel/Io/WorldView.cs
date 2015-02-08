@@ -345,12 +345,12 @@ namespace WizardsDuel.Io
 							var glayer = (GridLayer)this.layers[this.gridLayer];
 							glayer.SetTile(x, y, this.dungeon[y][x] == '.');
 						} catch (Exception ex) {
-							Logger.Debug("WorldView", "SetDungeon2", ex.ToString());
+							Logger.Debug("WorldView", "SetDungeon", ex.ToString());
 						}
 					}
 				}
 			} catch (Exception ex) {
-				Logger.Debug("WorldView", "SetDungeon2", ex.ToString());
+				Logger.Debug("WorldView", "SetDungeon", ex.ToString());
 			}
 		}
 		#endregion

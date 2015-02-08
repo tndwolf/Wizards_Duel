@@ -31,7 +31,7 @@ namespace WizardsDuel.Game
 		/// <summary>
 		/// Executes this event, return true if the event has ended, false otherwise
 		/// </summary>
-		virtual public bool Run(Simulator sim) {
+		virtual public bool Run() {
 			return true;
 		}
 
@@ -64,12 +64,36 @@ namespace WizardsDuel.Game
 	public class AiEvent: ActorEvent {
 		public AiEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
 
-		override public bool Run(Simulator sim) {
+		override public bool Run() {
+			var sim = Simulator.Instance;
 			//Logger.Debug ("AiEvent", "Run", "Running time " + this.StartTime.ToString());
 			this.StartTime = 0;
 			this.DeltaTime = 15; // XXX this should come from the speed of the player actor!
 			var rnd = new Random ();
-			sim.CanShift(this.Actor, rnd.Next(-1,2), rnd.Next(-1,2), true);
+
+			var player = sim.GetObject (Simulator.PLAYER_ID);
+			var actore = sim.GetObject (this.Actor);
+			var dx = Math.Sign(player.X - actore.X);
+			var dy = Math.Sign(player.Y - actore.Y);
+
+			//sim.CanShift(this.Actor, rnd.Next(-1,2), rnd.Next(-1,2), true);
+			sim.CanShift(this.Actor, dx, dy, true);
+			sim.events.AppendEvent (this);
+			return true;
+		}
+	}
+
+	public class AreaAiEvent: Event {
+		private long areaDeltaTime;
+
+		public AreaAiEvent (long deltaTime = 0): base (deltaTime) {
+			this.areaDeltaTime = deltaTime;
+		}
+
+		override public bool Run() {
+			var sim = Simulator.Instance;
+			Logger.Info ("AreaAiEvent", "Run", "Running area events");
+			this.DeltaTime = this.areaDeltaTime;
 			sim.events.AppendEvent (this);
 			return true;
 		}
@@ -79,7 +103,7 @@ namespace WizardsDuel.Game
 		public AttackEvent (Entity attacker, Entity target, long deltaTime = 0): 
 		base (attacker, target, deltaTime) {}
 
-		override public bool Run(Simulator sim) {
+		override public bool Run() {
 			Logger.Debug ("AttackEvent", "Run", this.Actor + " attacks " + this.Target);
 			var rnd = new Random ();
 			this.Actor.OutObject.SetAnimation ("ATTACK");
@@ -109,9 +133,9 @@ namespace WizardsDuel.Game
 			set;
 		}
 
-		override public bool Run(Simulator sim) {
+		override public bool Run() {
 			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
-			sim.CanShift(this.Actor, this.DX, this.DY, true);
+			Simulator.Instance.CanShift(this.Actor, this.DX, this.DY, true);
 			return true;
 		}
 	}
@@ -145,12 +169,25 @@ namespace WizardsDuel.Game
 			this.eventDispatcher = ed;
 		}
 
-		override public bool Run(Simulator sim) {
+		override public bool Run() {
 			//Logger.Debug ("UserEvent", "Run", "Running time " + this.StartTime.ToString());
 			var acted = this.eventDispatcher.RunUserEvent ();
 			this.StartTime = 0;
 			this.DeltaTime = (acted == false) ? 0 : 10; // XXX this should come from the speed of the player actor!
 			this.eventDispatcher.AppendEvent (this);
+
+			// XXX Test only, run the enemies
+			if (acted == true) {
+				var sim = Simulator.Instance;
+				var player = sim.GetObject (Simulator.PLAYER_ID);
+				foreach (var enemy in sim.ListEnemies()) {
+					var dx = Math.Sign (player.X - enemy.Value.X);
+					var dy = Math.Sign (player.Y - enemy.Value.Y);
+					sim.CanShift (enemy.Key, dx, dy, true);
+				}
+			}
+			// XXX end of test
+
 			return true;
 		}
 	}

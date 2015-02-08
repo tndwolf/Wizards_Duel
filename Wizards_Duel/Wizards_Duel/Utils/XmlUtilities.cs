@@ -108,6 +108,23 @@ namespace WizardsDuel.Utils
 		}
 
 		/// <summary>
+		/// Gets an XML node attribute as a string array. The array must be in a
+		/// comma separated value format (e.g. "a,b,c")
+		/// </summary>
+		/// <returns>The attribute value or an array containing a single empty string.</returns>
+		/// <param name="node">Node.</param>
+		/// <param name="attributeName">Attribute name.</param>
+		static public string[] GetStringArray(XmlNode node, string attributeName) {
+			try {
+				var str = node.Attributes.GetNamedItem(attributeName).Value;
+				return str.Split(new char[]{',', ';'});
+			} catch (Exception ex) {
+				Logger.Info ("XmlUtilities", "GetStringArray", ex.ToString ());
+				return new string[]{string.Empty};
+			}
+		}
+
+		/// <summary>
 		/// Gets an XML node attribute as a string.
 		/// </summary>
 		/// <returns>The attribute value or the default value.</returns>

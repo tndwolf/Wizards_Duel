@@ -152,6 +152,19 @@ namespace WizardsDuel.Game
 							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New BurstSpawner: " + children[c].ToString());
 							break;
 
+						case "colorAnimation":
+							var buff = XmlUtilities.GetIntArray(children[c], "startColor");
+							var startColor = new Color((byte)buff[0], (byte)buff[1], (byte)buff[2]);
+							if (buff.Length > 3)
+								startColor.A = (byte)buff[3];
+							buff = XmlUtilities.GetIntArray(children[c], "endColor");
+							var endColor = new Color((byte)buff[0], (byte)buff[1], (byte)buff[2]);
+							if (buff.Length > 3)
+								endColor.A = (byte)buff[3];
+							emitter.AddAnimator (new ColorAnimation(startColor, endColor, XmlUtilities.GetInt(children[c], "duration")));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New ColorAnimator: " + children[c].ToString());
+							break;
+
 						case "colorPicker":
 							var cps  = new ColorPickerSpawner ();
 							var colors = children[c].SelectNodes("./color");
@@ -171,12 +184,42 @@ namespace WizardsDuel.Game
 							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New ColorPickerSpawner: " + children[c].ToString());
 							break;
 
+						case "fade":
+							emitter.AddAnimator (new FadeAnimation (
+								XmlUtilities.GetInt(children[c], "fadeInDuration"),
+								XmlUtilities.GetInt(children[c], "duration"),
+								XmlUtilities.GetInt(children[c], "fadeOutDuration")
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New FadeAnimator: " + children[c].ToString());
+							break;
+
 						case "gravity":
 							emitter.AddAnimator (new GravityAnimation (new Vector2f(
 								XmlUtilities.GetFloat(children[c], "forceX") * xCoeff, 
 								XmlUtilities.GetFloat(children[c], "forceY")
 							)));
 							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New GravityAnimation: " + children[c].ToString());
+							break;
+						
+						case "gridSpawner":
+							emitter.AddVariator (new GridSpawner (
+								XmlUtilities.GetInt(children[c], "gridWidth"),
+								XmlUtilities.GetInt(children[c], "gridHeight"),
+								XmlUtilities.GetFloat(children[c], "cellWidth") * xCoeff,
+								XmlUtilities.GetFloat(children[c], "cellHeight"),
+								XmlUtilities.GetFloat(children[c], "deltaX", 0f),
+								XmlUtilities.GetFloat(children[c], "deltaY", 0f)
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New GridSpawner: " + children[c].ToString());
+							break;
+
+						case "lightSpawner":
+							buff = XmlUtilities.GetIntArray(children[c], "color");
+							var lightColor = new Color((byte)buff[0], (byte)buff[1], (byte)buff[2]);
+							if (buff.Length > 3)
+								lightColor.A = (byte)buff[3];
+							emitter.AddVariator (new LightSpawner(lightColor, XmlUtilities.GetInt(children[c], "radius")));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New LightSpawner: " + children[c].ToString());
 							break;
 
 						case "particleTemplate":
@@ -189,6 +232,23 @@ namespace WizardsDuel.Game
 								XmlUtilities.GetFloat(children[c], "scale", 1f)
 							);
 							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New particle: " + children[c].ToString());
+							break;
+
+						case "scaleAnimation":
+							emitter.AddAnimator(new ScaleAnimation(
+								XmlUtilities.GetInt(children[c], "duration"),
+								XmlUtilities.GetFloat(children[c], "start"),
+								XmlUtilities.GetFloat(children[c], "end")
+							));
+							break;
+						
+						case "zAnimation":
+							emitter.AddAnimator(new ZAnimation(
+								XmlUtilities.GetInt(children[c], "duration"),
+								XmlUtilities.GetInt(children[c], "start"),
+								XmlUtilities.GetInt(children[c], "end")
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New ZAnimation: " + children[c].ToString());
 							break;
 
 						default:

@@ -9,7 +9,7 @@
 <module>
 	<dungeon>
 		<!-- #=WALL, .=FLOOR, O=PIT, by defaul everything fills up with walls -->
-		<map type="STATIC" seed="0" gridWidth="16" gridHeight="16">
+		<map type="STATIC" seed="0" gridWidth="200" gridHeight="200">
 			################
 			#...########...#
 			#..............#
@@ -67,7 +67,7 @@
 			<tiledLayer blend="ALPHA" mask="tilemask_floor_01" maskBlend="ALPHA" name="FLOOR" scale="0.5" texture="test_floor.png" tileScale="2"/>
 			<objectsLayer blend="ALPHA" scale="2"/>
 			<tiledLayer blend="ALPHA" mask="tilemask_wall_shadow_01" maskBlend="ALPHA" name="WALL-SHADOW" tileScale="1"/>
-			<!--lightLayer ambientRed="128" ambientGreen="128" ambientBlue="128" blend="MULTIPLY"/-->
+			<lightLayer ambientRed="128" ambientGreen="128" ambientBlue="128" blend="MULTIPLY"/>
 		</worldView>
 		<icon x="16" y="32" u="0" v="0" width="32" height="32" scale="2" texture="SpriteSheet_Exekiel01.png" />
 	</page>

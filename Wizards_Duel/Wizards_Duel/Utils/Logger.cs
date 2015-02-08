@@ -36,7 +36,7 @@ namespace WizardsDuel.Utils
 		private static List<string> blacklist = new List<string>();
 		private static StreamWriter logFile;
 
-		private static string LOGS_DIRECTORY = "Logs" + Path.DirectorySeparatorChar;
+		public static string LOGS_DIRECTORY = "Logs" + Path.DirectorySeparatorChar;
 
 		// XXX This is just a trick to call a Deconstructor for a static class
 		static readonly Finalizer finalizer = new Finalizer();
