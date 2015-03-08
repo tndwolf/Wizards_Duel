@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<level id="test" minArea="800" maxWidth="200" maxHeight="200" algorithm="BLOCK" start="b_start" end="b_end">
+<level id="test" minArea="400" maxWidth="200" maxHeight="200" algorithm="BLOCK" start="b_start" end="b_end">
 	<!-- in general "occurs" attribute are the number of occurencies while
 	"probability" is a pb between 0.0 and 1.0 -->
 	<tiles default="#">
@@ -15,21 +15,31 @@
 	<!-- By default whitespace characters are ignored (that's why width/height is required) -->
 	<!-- Evaluate the use of empty characters, like 'X', to have non square rooms -->
 	<!-- Variations are 'F'lip (Y), 'M'irror (X), 'FM' both, 'CW' clockwise rotation, 'CCW' counte-cw -->
-	<block id="b_start" width="7" height="5" occurs="0">
+	<block id="b_start" width="7" height="8" occurs="0">
 		#######
-		#..S..#
+		#######
+		#######
+		#######
+		#.....#
 		#.....#
 		#.....#
 		###.###
-		<exit x="3" y="4" direction="S"/>
+		<exit x="3" y="7" direction="S"/>
+		<start x="3" y="4"/>
+		<object ref="bp_fire_entrance" x="3" y="3" probability="1.0"/>
 	</block>
-	<block id="b_end" width="7" height="5" occurs="0">
-		###.###
-		#.....#
-		#.....#
-		#..E..#
+	<block id="b_end" width="7" height="8" occurs="0">
 		#######
-		<exit x="3" y="0" direction="N"/>
+		#######
+		#######
+		#######
+		#.....#
+		#.....#
+		#.....#
+		###.###
+		<exit x="3" y="7" direction="S"/>
+		<end x="3" y="4"/>
+		<object ref="bp_fire_entrance" x="3" y="3" probability="1.0"/>
 	</block>
 	<block id="b_room" width="5" height="5" occurs="1" variations="F,CW,CCW">
 		#####

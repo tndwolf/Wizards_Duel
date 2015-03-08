@@ -199,6 +199,19 @@ namespace WizardsDuel.Io
 			var gl = this.layers [this.gridLayer] as GridLayer;
  			gl.Selected = new Vector2i (gx, gy);
 			Simulator.Instance.Cast(Simulator.PLAYER_ID, gx, gy);
+
+			var ruleset = this.ruleset["WALL-FACING"];
+			//var layer = this.WallLayer;
+			for (var r = 1; r < ruleset.Count; r++) {
+				var rule = ruleset[r];
+				if (rule.Test (gx, gy, this.dungeon) == true) {
+					Logger.Debug("WorldView", "OnMousePressed", "Rule at " + gx.ToString() + "," + gy.ToString() + ": " + rule.ToString());
+					Logger.Debug("WorldView", "OnMousePressed", "Texture " + rule.GetX(gx, gy).ToString() + "," + rule.GetY(gx, gy).ToString());
+					//layer.SetTile(x, y, rule.GetX(x, y), rule.GetY(x, y), rule.w, rule.h, rule.dx, rule.dy);
+					return;
+				}
+			}
+			Logger.Debug("WorldView", "OnMousePressed", "No rule found at " + gx.ToString() + "," + gy.ToString());
 		}
 
 		public void OnMouseReleased (object sender, MouseButtonEventArgs e)
@@ -242,6 +255,8 @@ namespace WizardsDuel.Io
 			public int[] y = {0};
 			public int dx = 0;
 			public int dy = 0;
+			public int maxX = 0;
+			public int maxY = 0;
 			public int w = 0;
 			public int h = 0;
 			public List<Condition> conditions = new List<Condition>();
@@ -269,10 +284,11 @@ namespace WizardsDuel.Io
 			/// <returns>The quad.</returns>
 			/// <param name="x">The x coordinate on the map.</param>
 			/// <param name="y">The y coordinate on the map.</param>
-			public int[] GetQuad(int x, int y) {
+			virtual public int[] GetQuad(int x, int y) {
 				return new int[] {
-					this.x[x % this.x.Length],
-					this.y[y % this.y.Length],
+					//this.x[x % this.x.Length],
+					(this.x[y % this.x.Length] + x * this.w) /*% this.maxX*/,
+					(this.y[x % this.y.Length] + y * this.h) /*% this.maxY*/,
 					this.w,
 					this.h
 				};
@@ -285,8 +301,8 @@ namespace WizardsDuel.Io
 			/// </summary>
 			/// <returns>The x.</returns>
 			/// <param name="x">The x coordinate on the map.</param>
-			public int GetX(int x) {
-				return this.x [x % this.x.Length];
+			virtual public int GetX(int x, int y) {
+				return this.x [y % this.x.Length];
 			}
 
 			/// <summary>
@@ -296,14 +312,79 @@ namespace WizardsDuel.Io
 			/// </summary>
 			/// <returns>The y.</returns>
 			/// <param name="y">The y coordinate on the map.</param>
-			public int GetY(int y) {
+			virtual public int GetY(int x, int y) {
 				return this.y [y % this.y.Length];
 			}
 
 			public override string ToString() {
-				return String.Format("<tile x=\"{0}\" y=\"{1}\" dx=\"{2}\" dy=\"{3}\" w=\"{4}\" h=\"{5}\"/>", x, y, dx, dy, w, h);
+				return String.Format(
+					"<tile x=\"{0}\" y=\"{1}\" maxX=\"{6}\" maxX=\"{7}\" dx=\"{2}\" dy=\"{3}\" w=\"{4}\" h=\"{5}\"/>", 
+					string.Join(" ",x), 
+					string.Join(" ",y), 
+					dx, 
+					dy, 
+					w, 
+					h,
+					maxX,
+					maxY );
 			}
 		}
+
+		public class RowRule: Rule {
+			/// <summary>
+			/// Gets the quad represented by the rule at x,y coordinate on the map.
+			/// Useful because the rule can represent "blocks" of tiles in a
+			/// repeating pattern
+			/// </summary>
+			/// <returns>The quad.</returns>
+			/// <param name="x">The x coordinate on the map.</param>
+			/// <param name="y">The y coordinate on the map.</param>
+			override public int[] GetQuad(int x, int y) {
+				return new int[] {
+					//this.x[x % this.x.Length],
+					(this.x[y % this.x.Length] + x * this.w) % this.maxX,
+					(this.y[x % this.y.Length] + y * this.h) /*% this.maxY*/,
+					this.w,
+					this.h
+				};
+			}
+
+			/// <summary>
+			/// Gets the x coordinate of the tile sprite in pixel.
+			/// Useful because the rule can represent "blocks" of tiles in a
+			/// repeating pattern
+			/// </summary>
+			/// <returns>The x.</returns>
+			/// <param name="x">The x coordinate on the map.</param>
+			override public int GetX(int x, int y) {
+				return (this.x [y % this.x.Length] + x * this.w) % this.maxX;
+			}
+
+			/// <summary>
+			/// Gets the y coordinate of the tile sprite in pixel.
+			/// Useful because the rule can represent "blocks" of tiles in a
+			/// repeating pattern
+			/// </summary>
+			/// <returns>The y.</returns>
+			/// <param name="y">The y coordinate on the map.</param>
+			override public int GetY(int x, int y) {
+				return this.y [y % this.y.Length];// + y * this.h;
+			}
+
+			public override string ToString() {
+				return String.Format(
+					"<tile type=\"ROW\" x=\"{0}\" y=\"{1}\" maxX=\"{6}\" maxX=\"{7}\" dx=\"{2}\" dy=\"{3}\" w=\"{4}\" h=\"{5}\"/>", 
+					string.Join(" ",x), 
+					string.Join(" ",y), 
+					dx, 
+					dy, 
+					w, 
+					h,
+					maxX,
+					maxY );
+			}
+		}
+
 		public Dictionary<string, List<Rule>> ruleset = new Dictionary<string, List<Rule>> ();
 
 		public void AddRule (Rule rule, string layerName) {
@@ -337,7 +418,7 @@ namespace WizardsDuel.Io
 								for (var r = 1; r < ruleset.Count; r++) {
 									var rule = ruleset[r];
 									if (rule.Test (x, y, this.dungeon) == true) {
-										layer.SetTile(x, y, rule.GetX(x), rule.GetY(y), rule.w, rule.h, rule.dx, rule.dy);
+										layer.SetTile(x, y, rule.GetX(x, y), rule.GetY(x, y), rule.w, rule.h, rule.dx, rule.dy);
 										break;
 									}
 								}

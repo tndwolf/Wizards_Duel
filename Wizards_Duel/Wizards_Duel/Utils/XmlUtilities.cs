@@ -38,6 +38,25 @@ namespace WizardsDuel.Utils
 		}
 
 		/// <summary>
+		/// Gets an XML node attribute as a SFML Color.
+		/// </summary>
+		/// <returns>The attribute value or the default value.</returns>
+		/// <param name="node">Node.</param>
+		/// <param name="attributeName">Attribute name.</param>
+		/// <param name="def">Default value that will be returned on errors.</param>
+		static public SFML.Graphics.Color GetColor(XmlNode node, string attributeName, SFML.Graphics.Color def) {
+			try {
+				var buff = XmlUtilities.GetIntArray(node, attributeName);
+				var res = new SFML.Graphics.Color((byte)buff[0], (byte)buff[1], (byte)buff[2]);
+				if (buff.Length > 3)
+					res.A = (byte)buff[3];
+				return res;
+			} catch {
+				return def;
+			}
+		}
+
+		/// <summary>
 		/// Gets an XML node attribute as a floting point value.
 		/// </summary>
 		/// <returns>The attribute value or the default value.</returns>

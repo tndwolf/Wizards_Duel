@@ -31,7 +31,7 @@ namespace WizardsDuel.Io
 	public class Icon: Widget {
 		protected Facing facing = Facing.RIGHT;
 		protected Vector2f facingOffset = new Vector2f(0f, 0f);
-		private Vector2f size = new Vector2f();
+		protected Vector2f size = new Vector2f();
 		protected Sprite sprite;
 		protected bool updateFacing = false;
 

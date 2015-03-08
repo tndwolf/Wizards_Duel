@@ -41,8 +41,10 @@ namespace WizardsDuel
 				Logger.Blacklist("LoadTilemask");
 				Logger.Blacklist("AddRule");
 				Logger.Blacklist("AddLayer");
+				Logger.Blacklist("SetDungeon");
+				Logger.Blacklist("CanShift");
 				//Logger.Blacklist("BackgroundMusic");
-				IoManager.Initialize ("Wizard's Duel", 800, 480);
+				IoManager.Initialize ("Wizard's Duel", 1280, 720);
 				//Logger.Initialize (LogLevel.ALL, logPrintToScreen);
 				//Logger.SetOutFile (logPrefix, logUseTimestamp);
 				//IO.Initialize ("Wizard's Duel", width, height);

@@ -70,6 +70,211 @@ namespace WizardsDuel.Io
 
 	public class OutObject : Icon, IComparable {
 		public const string IDLE_ANIMATION = "IDLE";
+		protected bool alreadyAnimated = false;
+		public Dictionary<string, AnimationDefinition> animations = new Dictionary<string, AnimationDefinition>();
+		protected List<ParticleSystem> particles = new List<ParticleSystem> ();
+
+		public OutObject(string texture, IntRect srcRect) : base (texture, srcRect) {}
+
+		public void AddAnimation(string id, AnimationDefinition animation) {
+			this.animations.Add (id, animation);
+			Logger.Debug ("OutObject", "AddAnimation", "Added animation " + id);
+			if (id == OutObject2.IDLE_ANIMATION) {
+				this.IdleAnimation = id;
+				this.SetAnimation (id);
+				Logger.Debug ("OutObject", "AddAnimation", "Set idle animation " + id);
+			}
+		}
+
+		public void AddParticleSystem(ParticleSystem ps) {
+			this.particles.Add (ps);
+		}
+
+		virtual public void Animate() {
+			List<Animator> newAnimators = new List<Animator> ();
+			foreach (var animator in base.animators) {
+				animator.Update (this);
+				if (animator.HasEnded == false) {
+					newAnimators.Add (animator);
+				}
+			}
+			this.animators = newAnimators;
+			this.alreadyAnimated = true;
+			if (newAnimators.Count == 0 && this.IdleAnimation != null) {
+				this.SetAnimation (this.IdleAnimation);
+			}
+		}
+
+		public Vector2f Center {
+			get { return new Vector2f(this.X + this.Width/2f, this.Y + this.Height/2f); }
+		}
+
+		public float CenterX {
+			get { return this.X + this.Width/2f; }
+		}
+
+		public float CenterY {
+			get { return this.Y + this.Height/2f; }
+		}
+
+		/// <summary>
+		/// Compares two OutObjects to decide the drawing order.
+		/// </summary>
+		/// <returns>The comparison.</returns>
+		/// <param name="obj">Reference object.</param>
+		public int CompareTo(object obj) {
+			try {
+				var comp = (OutObject) obj;
+				if (this.ZIndex == comp.ZIndex) {
+					return this.FeetY.CompareTo (comp.FeetY);
+				} else {
+					return this.ZIndex.CompareTo (comp.ZIndex);
+				}
+			} catch (Exception ex) {
+				Logger.Debug ("OutObject", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+				return 0;
+			}
+		}
+
+		override public void Draw(RenderTarget target, RenderStates states) {
+			if (this.alreadyAnimated == false) {
+				this.Animate ();
+			}
+			this.alreadyAnimated = false;
+			/*var cs = new CircleShape (1);
+			cs.Position = this.Position;
+			target.Draw (cs, states);
+			cs.Position = new Vector2f(this.Position.X + this.Width, this.Position.Y + Height);
+			target.Draw (cs, states);*/
+			states.Transform.Translate(this.facingOffset);
+			states.Transform.Translate(this.Padding);
+			target.Draw(this.sprite, states);
+			//Logger.Debug ("OutObject", "Draw", "Drawing at " + this.Position.ToString ());
+			foreach (var ps in this.particles) {
+				ps.Position = this.Center;
+			}
+		}
+
+		override public Facing Facing {
+			get { return this.facing; }
+			set {
+				if (this.facing != value) {
+					this.facing = value;
+					//this.updateFacing = true;
+					this.sprite.Scale = new Vector2f (-this.sprite.Scale.X, this.sprite.Scale.Y);
+					if (this.Facing == Facing.LEFT) {
+						this.facingOffset = new Vector2f (this.Width, 0f);
+					} else {
+						this.facingOffset = new Vector2f (0f, 0f);
+					}
+				}
+			}
+		}
+
+		public float FeetY {
+			get { return this.Y + this.Height + this.Padding.Y; }
+			set { this.Y = value - this.Height - this.Padding.Y; }
+		}
+
+		/// <summary>
+		/// Gets the length of the specific animation in milliseconds.
+		/// </summary>
+		/// <returns>The animation length.</returns>
+		/// <param name="id">Identifier.</param>
+		public int GetAnimationLength(string id) {
+			AnimationDefinition anim;
+			if (this.animations.TryGetValue (id, out anim) == true) {
+				return anim.Duration;
+			} else {
+				return 0;
+			}
+		}
+
+		override public float Height { 
+			get { return this.size.Y; }
+			set { //throw new NotImplementedException(); }
+				this.size.Y = value; 
+				this.sprite.Scale = new Vector2f(this.sprite.Scale.X, value / this.sprite.TextureRect.Height);
+			}
+		}
+
+		public string IdleAnimation {
+			get;
+			set;
+		}
+
+		virtual public bool IsAnimating {
+			get { return !this.IsInIdle; }
+		}
+
+		public bool IsInIdle { get; set; }
+
+		override public void Move(int dx, int dy) {
+			this.sprite.Position = new Vector2f(this.sprite.Position.X + dx, this.sprite.Position.Y + dy);
+		}
+
+		override public Vector2f Position { 
+			get { return this.sprite.Position; } 
+			set { this.sprite.Position = value; }
+		}
+
+		public void RemoveParticleSystem(string id) {
+			foreach (var particle in this.particles) {
+				if (particle.ID == id) {
+					particle.TTL = 0;
+				}
+			}
+			this.particles.RemoveAll (x => x.ID == id);
+		}
+
+		override public float ScaleX { 
+			get { return this.sprite.Scale.X; } 
+			set { this.Width = value * this.sprite.TextureRect.Width; }
+		}
+
+		override public float ScaleY { 
+			get { return this.sprite.Scale.Y; } 
+			set { this.Height = value * this.sprite.TextureRect.Height; }
+		}
+
+		public void SetAnimation(string id) {
+			AnimationDefinition anim;
+			if (this.animations.TryGetValue (id, out anim) == true) {
+				this.animators.RemoveAll (x => x is SpriteAnimation);
+				anim.SetAnimation (this);
+				this.IsInIdle = (id == OutObject.IDLE_ANIMATION);
+			}
+		}
+
+		public bool ToBeDeleted { get; set; }
+
+		override public float X { 
+			get { return this.sprite.Position.X; } 
+			set { this.sprite.Position = new Vector2f(value, this.sprite.Position.Y); }
+		}
+
+		override public float Y { 
+			get { return this.sprite.Position.Y; } 
+			set { this.sprite.Position = new Vector2f(this.sprite.Position.X, value); }
+		}
+
+
+		override public float Width { 
+			get { return this.size.X; }
+			set { //throw new NotImplementedException(); }
+				this.size.X = value; 
+				this.sprite.Scale = new Vector2f(value / this.sprite.TextureRect.Width, this.sprite.Scale.X);
+			}
+		}
+
+		public int ZIndex {
+			get;
+			set;
+		}
+	}
+
+	public class OutObject2 : Icon, IComparable {
+		public const string IDLE_ANIMATION = "IDLE";
 
 		protected bool alreadyAnimated = false;
 		public Dictionary<string, AnimationDefinition> animations = new Dictionary<string, AnimationDefinition>();
@@ -79,14 +284,14 @@ namespace WizardsDuel.Io
 
 		protected bool primaVolta = true;
 
-		public OutObject(string texture, IntRect srcRect) : base (texture, srcRect) {
+		public OutObject2(string texture, IntRect srcRect) : base (texture, srcRect) {
 			this.updateFacing = true;
 		}
 
 		public void AddAnimation(string id, AnimationDefinition animation) {
 			this.animations.Add (id, animation);
 			Logger.Debug ("OutObject", "AddAnimation", "Added animation " + id);
-			if (id == OutObject.IDLE_ANIMATION) {
+			if (id == OutObject2.IDLE_ANIMATION) {
 				this.IdleAnimation = id;
 				this.SetAnimation (id);
 				Logger.Debug ("OutObject", "AddAnimation", "Set idle animation " + id);
@@ -127,7 +332,7 @@ namespace WizardsDuel.Io
 		/// <param name="obj">Reference object.</param>
 		public int CompareTo(object obj) {
 			try {
-				var comp = (OutObject) obj;
+				var comp = (OutObject2) obj;
 				if (this.ZIndex == comp.ZIndex) {
 					return this.FeetY.CompareTo (comp.FeetY);
 				} else {
@@ -233,8 +438,8 @@ namespace WizardsDuel.Io
 			AnimationDefinition anim;
 			if (this.animations.TryGetValue (id, out anim) == true) {
 				this.animators.RemoveAll (x => x is SpriteAnimation);
-				anim.SetAnimation (this);
-				this.IsInIdle = (id == OutObject.IDLE_ANIMATION);
+				//anim.SetAnimation (this);
+				this.IsInIdle = (id == OutObject2.IDLE_ANIMATION);
 			}
 		}
 

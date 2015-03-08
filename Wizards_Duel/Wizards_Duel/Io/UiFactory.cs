@@ -113,13 +113,22 @@ namespace WizardsDuel.Io
 			for (var i = 0; i < rules.Count; i++) {
 				try {
 					var xrule = rules.Item (i);
-					rule = new WorldView.Rule();
+					var type = XmlUtilities.GetString(xrule, "type");
+					if (type == "ROW") {
+						rule = new WorldView.RowRule();
+					} else {
+						rule = new WorldView.Rule();
+					}
 					rule.x = XmlUtilities.GetIntArray(xrule, "x");
 					rule.y = XmlUtilities.GetIntArray(xrule, "y");
 					rule.dx = XmlUtilities.GetInt(xrule, "dx");
 					rule.dy = XmlUtilities.GetInt(xrule, "dy");
 					rule.w = XmlUtilities.GetInt(xrule, "w");
 					rule.h = XmlUtilities.GetInt(xrule, "h");
+					rule.maxX = XmlUtilities.GetInt(xrule, "maxX");
+					rule.maxX = (rule.maxX < 1) ? rule.w + rule.x[rule.x.Length-1] : rule.maxX;
+					//rule.maxY = XmlUtilities.GetInt(xrule, "maxY");
+					//rule.maxY = (rule.maxY < 1) ? rule.h + rule.y[rule.y.Length-1] : rule.maxY;
 					var conditions = xrule.ChildNodes;
 					for (var j = 0; j < conditions.Count; j++) {
 						var xcondition = conditions.Item (j);
@@ -179,7 +188,7 @@ namespace WizardsDuel.Io
 						view.AddLayer (ll, LayerType.LIGHTS);
 						break;
 					case "objectsLayer":
-						var gl = new GridLayer(width, height, 24, 24, cellWidth, cellHeight);
+						var gl = new GridLayer(width, height, 200, 200, cellWidth, cellHeight);
 						gl.GridBorder = 3;
 						gl.GridPadding = 2;
 						gl.OutColor = new Color(0,0,0,128);

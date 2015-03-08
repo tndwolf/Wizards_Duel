@@ -59,10 +59,28 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		static public Entity LoadFromTemplate(string templateId) {
+		static public Entity LoadFromTemplate(string templateId, string assignedId) {
 			try {
-				var res = new Entity ();
 				XmlNode template = GameFactory.xdoc.SelectSingleNode ("//blueprint[@id='" + templateId + "']");
+
+				var res = new Entity (assignedId);
+				res.Static = XmlUtilities.GetBool(template, "static");
+				var variables = template.SelectNodes("./var");
+				for (int v = 0; v < variables.Count; v++) {
+					res.Vars.Add(
+						XmlUtilities.GetString(variables[v], "name"),
+						XmlUtilities.GetInt(variables[v], "value")
+					);
+				}
+
+				var death = template.SelectSingleNode("./death");
+				res.DeathMain = XmlUtilities.GetColor(death, "color1", Color.Red);
+				res.DeathSecundary = XmlUtilities.GetColor(death, "color2", Color.Black);
+				res.DeathRect.Left = XmlUtilities.GetInt(death, "offsetX");
+				res.DeathRect.Top = XmlUtilities.GetInt(death, "offsetY");
+				res.DeathRect.Width = XmlUtilities.GetInt(death, "width", 1);
+				res.DeathRect.Height = XmlUtilities.GetInt(death, "height", 1);
+
 				XmlNode outTemplate = template.SelectSingleNode ("./output");
 				res.OutObject = new OutObject (
 					XmlUtilities.GetString(outTemplate, "texture"),
@@ -110,9 +128,10 @@ namespace WizardsDuel.Game
 			try {
 				var xCoeff = flip ? -1f : 1f;
 				var angleCoeff = flip ? 3.1415f : 0f;
-				var res = new ParticleSystem ();
+				var res = new ParticleSystem (templateId);
 				XmlNode template = GameFactory.xdoc.SelectSingleNode ("//particle[@id='" + templateId + "']");
 				res.TTL = XmlUtilities.GetInt(template, "ttl");
+				if (res.TTL < 0) res.TTL = int.MaxValue;
 				res.Layer = layer;
 				res.Position = new Vector2f(x, y);
 
@@ -129,6 +148,7 @@ namespace WizardsDuel.Game
 					emitter.SpawnCount = XmlUtilities.GetInt(emitters[e], "spawnCount");
 					emitter.SpawnDeltaTime = XmlUtilities.GetInt(emitters[e], "spawnDeltaTime");
 					emitter.TTL = XmlUtilities.GetInt(emitters[e], "ttl");
+					if (emitter.TTL < 0) emitter.TTL = int.MaxValue;
 					emitter.ZIndex = XmlUtilities.GetInt(emitters[e], "zIndex", 0);
 
 					var children = emitters[e].ChildNodes;
@@ -150,6 +170,18 @@ namespace WizardsDuel.Game
 								XmlUtilities.GetFloat(children[c], "minAngle") + angleCoeff
 							));
 							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New BurstSpawner: " + children[c].ToString());
+							break;
+						
+						case "burstInSpawner":
+							emitter.AddVariator (new BurstInSpawner (
+								XmlUtilities.GetFloat(children[c], "maxRadius"),
+								XmlUtilities.GetFloat(children[c], "minRadius"),
+								XmlUtilities.GetFloat(children[c], "maxForce"),
+								XmlUtilities.GetFloat(children[c], "minForce"),
+								XmlUtilities.GetFloat(children[c], "maxAngle") + angleCoeff,
+								XmlUtilities.GetFloat(children[c], "minAngle") + angleCoeff
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New BurstInSpawner: " + children[c].ToString());
 							break;
 
 						case "colorAnimation":
@@ -255,8 +287,6 @@ namespace WizardsDuel.Game
 							break;
 						}
 					}
-
-					//emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2f);
 
 					res.AddEmitter(emitter);
 				}

@@ -456,6 +456,10 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		public static void SetSize(int width, int height) {
+			IoManager.window.Size = new Vector2u ((uint)width, (uint)height);
+		}
+
 		private static void TextEntered(object sender, TextEventArgs e) {
 			Logger.Info ("IO", "TextEntered", "Text " + e.Unicode);
 			IoManager.inputs.Unicode = e.Unicode;

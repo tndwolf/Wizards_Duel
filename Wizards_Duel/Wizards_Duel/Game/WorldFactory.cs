@@ -119,6 +119,8 @@ namespace WizardsDuel.Game
 				}
 			}
 			ID = id;
+			this.EndPoint = null;
+			this.StartPoint = null;
 		}
 
 		public void AddExit(int x, int y, string direction, bool canBeClosed) {
@@ -136,6 +138,9 @@ namespace WizardsDuel.Game
 				this.objects.Add (obj);
 			}
 		}
+
+		// TODO apply transformation (rotation, flip etc...)
+		public BlockObject EndPoint { get; set; }
 
 		public List<BlockExit> Exits {
 			get { return this.exits; }
@@ -220,6 +225,10 @@ namespace WizardsDuel.Game
 			return res;
 		}
 
+		public List<BlockObject> Objects {
+			get { return this.objects; }
+		}
+
 		public int Occurrencies { get; set; }
 
 		public ConstructionBlock RotateCCW() {
@@ -286,6 +295,9 @@ namespace WizardsDuel.Game
 			return res;
 		}
 
+		// TODO apply transformation (rotation, flip etc...)
+		public BlockObject StartPoint { get; set; }
+
 		override public string ToString() {
 			var res = String.Format ("<block width=\"{0}\" height=\"{1}\">\n", Width, Height);
 			for (int y = 0; y < Height; y++) {
@@ -309,7 +321,7 @@ namespace WizardsDuel.Game
 		}
 	}
 
-	public class TestLevel {
+	public class BufferLevel {
 		public const int MAX_ITERATIONS = 100;
 
 		private int blockCount = 0;
@@ -319,7 +331,7 @@ namespace WizardsDuel.Game
 		private int minX = 0;
 		private int minY = 0;
 
-		public TestLevel(int w, int h, string defaultTile) {
+		public BufferLevel(int w, int h, string defaultTile) {
 			this.minX = w-1;
 			this.minY = h-1;
 			var data = new string[w, h];
@@ -331,6 +343,9 @@ namespace WizardsDuel.Game
 			this.Data = data;
 			this.IsUsed = new bool[w, h];
 			this.UsedArea = 0;
+			this.Objects = new List<BlockObject> ();
+			this.StartCell = new BlockObject { ID = "start", Probability = 1f, X = 0, Y = 0 };
+			this.EndCell = new BlockObject { ID = "end", Probability = 1f, X = 0, Y = 0 };
 		}
 
 		public bool AddBlock(ConstructionBlock next) {
@@ -359,7 +374,7 @@ namespace WizardsDuel.Game
 					if (this.CanPlaceBlock (next, x, y) == false)
 						access = null;
 				}
-			} while (access == null);
+			} while (access == null && iter++ < MAX_ITERATIONS);
 			if (iter < MAX_ITERATIONS) {
 				// BEFORE placing the block remove the used exit
 				this.exits.Remove (exit);
@@ -431,9 +446,9 @@ namespace WizardsDuel.Game
 			for (var n = 0; n < iterations; n++) {
 				for (var y = 1; y < this.Height - 1; y++) {
 					for (var x = 1; x < this.Width - 1; x++) {
-						/*if (this.CountNeighbors (x, y, ".") == 1 && this.CountNeighbors (x, y, "#") == 3) {
-							this.Data [x, y] = "#";
-						}*/
+						//if (this.CountNeighbors (x, y, ".") == 1 && this.CountNeighbors (x, y, "#") == 3) {
+						//	this.Data [x, y] = "#";
+						//}
 						if (this.Data [x-1, y] == "." && this.Data[x+1, y] == "." && this.Data [x, y-1] == "#" && this.Data[x, y+1] == "#") {
 							this.Data [x, y] = ".";
 						}
@@ -481,6 +496,8 @@ namespace WizardsDuel.Game
 		}
 
 		public string CloseTile { get; set; }
+
+		public BlockObject EndCell { get; set; }
 
 		public bool IsOpenExit(int x, int y, string direction) {
 			if (this.IsValid (x, y, 1)) {
@@ -539,6 +556,11 @@ namespace WizardsDuel.Game
 			);
 		}
 
+		public List<BlockObject> Objects {
+			get;
+			set;
+		}
+
 		public void PlaceBlock(ConstructionBlock block, int x, int y) {
 			for (int j = 0; j < block.Height; j++) {
 				for (int i = 0; i < block.Width; i++) {
@@ -558,12 +580,30 @@ namespace WizardsDuel.Game
 					this.exits.Add (nexit);
 				}
 			}
+			foreach (var obj in block.Objects) {
+				var nobj = new BlockObject ();
+				nobj.ID = obj.ID;
+				nobj.Probability = obj.Probability;
+				nobj.X = obj.X + x;
+				nobj.Y = obj.Y + y;
+				this.Objects.Add (nobj);
+			}
+			if (block.StartPoint != null) {
+				this.StartCell.X = block.StartPoint.X + x;
+				this.StartCell.Y = block.StartPoint.Y + y;
+			}
+			if (block.EndPoint != null) {
+				this.EndCell.X = block.EndPoint.X + x;
+				this.EndCell.Y = block.EndPoint.Y + y;
+			}
 			this.blockCount++;
 			minX = (x < minX) ? (x > 0) ? x : 0 : minX;
 			minY = (y < minY) ? (y > 0) ? y : 0 : minY;
 			maxX = (x + block.Width > maxX) ? x + block.Width : maxX;
 			maxY = (y + block.Height > maxY) ? y + block.Height : maxY;
 		}
+
+		public BlockObject StartCell { get; set; }
 
 		public void Trim() {
 			var dx = this.maxX - this.minX + 2;
@@ -581,6 +621,16 @@ namespace WizardsDuel.Game
 					}
 				}
 			}
+
+			foreach (var obj in this.Objects) {
+				obj.X = obj.X - minX + 1;
+				obj.Y = obj.Y - minY + 1;
+			}
+			this.StartCell.X = this.StartCell.X - minX + 1;
+			this.StartCell.Y = this.StartCell.Y - minY + 1;
+			this.EndCell.X = this.EndCell.X - minX + 1;
+			this.EndCell.Y = this.EndCell.Y - minY + 1;
+
 			this.Data = data;
 			this.IsUsed = used;
 			this.minX = 0;
@@ -600,18 +650,14 @@ namespace WizardsDuel.Game
 					case ".":
 						res.SetPixel (x, y, SFML.Graphics.Color.White);
 						break;
-					case "S":
-						res.SetPixel (x, y, SFML.Graphics.Color.Green);
-						break;
-					case "E":
-						res.SetPixel (x, y, SFML.Graphics.Color.Red);
-						break;
 					default:
 						res.SetPixel (x, y, SFML.Graphics.Color.Cyan);
 						break;
 					}
 				}
 			}
+			res.SetPixel ((uint)this.StartCell.X, (uint)this.StartCell.Y, SFML.Graphics.Color.Green);
+			res.SetPixel ((uint)this.EndCell.X, (uint)this.EndCell.Y, SFML.Graphics.Color.Red);
 			return res;
 		}
 
@@ -639,6 +685,15 @@ namespace WizardsDuel.Game
 			var children = xblock.ChildNodes;
 			for (int i = 0; i < children.Count; i++) {
 				switch (children[i].Name) {
+				case "end":
+					block.EndPoint = new BlockObject { 
+						ID = "end", 
+						X = XmlUtilities.GetInt(children[i], "x"), 
+						Y = XmlUtilities.GetInt(children[i], "y"), 
+						Probability = 1f
+					};
+					break;
+
 				case "exit":
 					block.AddExit(
 						XmlUtilities.GetInt(children[i], "x"),
@@ -655,6 +710,15 @@ namespace WizardsDuel.Game
 						XmlUtilities.GetInt(children[i], "y"),
 						XmlUtilities.GetFloat(children[i], "probability")
 					);
+					break;
+
+				case "start":
+					block.StartPoint = new BlockObject { 
+						ID = "start", 
+						X = XmlUtilities.GetInt(children[i], "x"), 
+						Y = XmlUtilities.GetInt(children[i], "y"), 
+						Probability = 1f
+					};
 					break;
 
 				default:
@@ -695,10 +759,11 @@ namespace WizardsDuel.Game
 
 		public string DefaultTile { get; set; }
 
-		public string[,] Generate() {
-			TestLevel level = null;
+		public string[,] Generate(World res) {
+			BufferLevel level = null;
 			while (level == null) {
-				level = new TestLevel (MaxWidth, MaxHeight, this.DefaultTile);
+				var iter = 0;
+				level = new BufferLevel (MaxWidth, MaxHeight, this.DefaultTile);
 				level.CloseTile = this.DefaultTile;
 				// Place the first block
 				var last = this.blocksById [this.startBlock];
@@ -706,7 +771,7 @@ namespace WizardsDuel.Game
 				var y = Simulator.Instance.Random (MaxHeight);
 				level.PlaceBlock (last, x, y);
 				// place the other blocks
-				while (level.UsedArea < this.MinArea) {
+				while (level.UsedArea < this.MinArea && iter < 1000) {
 					if (level.AddRandomBlock (this.blocks) == false) {
 						level = null;
 						break;
@@ -714,6 +779,7 @@ namespace WizardsDuel.Game
 				}
 				if (level != null && level.AddBlock (this.blocksById[this.endBlock]) == false) {
 					level = null;
+					Logger.Debug ("WorldFactory", "Generate", "Invalid level, regenerating...");
 				}
 			}
 			level.CloseExits ();
@@ -722,6 +788,18 @@ namespace WizardsDuel.Game
 			level.Dump ();
 			var img = level.ToImage ();
 			img.SaveToFile (Logger.LOGS_DIRECTORY + "level.png");
+
+			res.SetMap (level.Data);
+			res.EndCell = new SFML.Window.Vector2i (level.EndCell.X, level.EndCell.Y);
+			res.StartCell = new SFML.Window.Vector2i (level.StartCell.X, level.StartCell.Y);
+			var o = 0;
+			foreach (var obj in level.Objects) {
+				if (Simulator.Instance.Random () < obj.Probability) {
+					Logger.Debug ("WorldFactory", "Generate", "Crating object " + obj.ID + " at " + obj.X + "," + obj.Y);
+					Simulator.Instance.CreateObject ("g_" + o.ToString (), obj.ID, obj.X, obj.Y);
+					o++;
+				}
+			}
 
 			return level.Data;
 		}

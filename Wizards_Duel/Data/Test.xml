@@ -62,7 +62,7 @@
 		</blueprint>
 	</blueprints>
 	<page id="page_0">
-		<worldView width="800" height="480" cellWidth="64" cellHeight="64">
+		<worldView width="1280" height="720" cellWidth="64" cellHeight="64">
 			<!--backgroundLayer blend="ALPHA" texture="test_floor.png" type="UNDEFINED"/-->
 			<tiledLayer blend="ALPHA" mask="tilemask_floor_01" maskBlend="ALPHA" name="FLOOR" scale="0.5" texture="test_floor.png" tileScale="2"/>
 			<objectsLayer blend="ALPHA" scale="2"/>

@@ -17,6 +17,8 @@
 using System;
 using WizardsDuel.Utils;
 using WizardsDuel.Io;
+using System.Collections.Generic;
+using SFML.Window;
 
 namespace WizardsDuel.Game
 {
@@ -93,6 +95,50 @@ namespace WizardsDuel.Game
 		override public bool Run() {
 			var sim = Simulator.Instance;
 			Logger.Info ("AreaAiEvent", "Run", "Running area events");
+
+			// XXX Test only, run the enemies
+			//if (acted == true)
+			{
+				//var sim = Simulator.Instance;
+				var player = sim.GetObject (Simulator.PLAYER_ID);
+				foreach (var enemy in sim.ListEnemies()) {
+					if (enemy.Value.Static == false) {
+						var dx = Math.Sign (player.X - enemy.Value.X);
+						var dy = Math.Sign (player.Y - enemy.Value.Y);
+						sim.CanShift (enemy.Key, dx, dy, true);
+					}
+				}
+			}
+			// XXX end of test
+
+			//5-5 7-7
+			/*var MAX_ENTITIES = 10;
+			var spawn = sim.Random (100);
+			if (spawn > 90 && sim.world.entities.Count < MAX_ENTITIES) {
+				var p = sim.GetObject (Simulator.PLAYER_ID);
+				var minX = p.X - 7;
+				var minY = p.Y - 5;
+				var maxX = p.X + 8;
+				var maxY = p.Y + 6;
+				var possibleCells = new List<Vector2i> ();
+				for(int y = minY; y < maxY; y++) {
+					for(int x = minX; x < maxX; x++) {
+						if (
+							!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
+							sim.world.IsWalkable (x, y) &&
+							sim.GetObjectAt(x, y) == null
+						) {
+							possibleCells.Add (new Vector2i (x, y));
+						}
+					}
+				}
+				if (possibleCells.Count > 0) {
+					var position = possibleCells [sim.Random (possibleCells.Count)];
+					sim.CreateObject(sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
+					Logger.Info ("AreaAiEvent", "Run", "Created object at " + position.ToString());
+				}
+			}*/
+
 			this.DeltaTime = this.areaDeltaTime;
 			sim.events.AppendEvent (this);
 			return true;
@@ -105,12 +151,38 @@ namespace WizardsDuel.Game
 
 		override public bool Run() {
 			Logger.Debug ("AttackEvent", "Run", this.Actor + " attacks " + this.Target);
-			var rnd = new Random ();
 			this.Actor.OutObject.SetAnimation ("ATTACK");
-			//var facing = (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
-			this.Actor.OutObject.Facing =  (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
-			this.Target.OutObject.Facing =  (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
-			Simulator.Instance.Bleed (Target);
+			if (this.Actor.X != this.Target.X) {
+				this.Actor.OutObject.Facing = (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
+				this.Target.OutObject.Facing = (this.Actor.X < this.Target.X) ? Facing.LEFT : Facing.RIGHT;
+			}
+			var newHealth = this.Target.GetVar (Simulator.HEALTH_VARIABLE, 1) - 1;
+			this.Target.SetVar (Simulator.HEALTH_VARIABLE, newHealth);
+			if (newHealth > 0) {
+				if (this.Target.GetVar ("armor") < 1) {
+					Simulator.Instance.Bleed (Target);
+				}
+			} else {
+				Simulator.Instance.Kill (Target);
+			}
+			return true;
+		}
+	}
+
+	public class KillEvent: ActorEvent {
+		public KillEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
+
+		override public bool Run() {
+			Simulator.Instance.Kill (Simulator.Instance.GetObject(this.Actor));
+			return true;
+		}
+	}
+
+	public class DestroyEvent: ActorEvent {
+		public DestroyEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
+
+		override public bool Run() {
+			Simulator.Instance.DestroyObject (this.Actor);
 			return true;
 		}
 	}
@@ -176,17 +248,36 @@ namespace WizardsDuel.Game
 			this.DeltaTime = (acted == false) ? 0 : 10; // XXX this should come from the speed of the player actor!
 			this.eventDispatcher.AppendEvent (this);
 
-			// XXX Test only, run the enemies
 			if (acted == true) {
+				//5-5 7-7
+				var MAX_ENTITIES = 10;
 				var sim = Simulator.Instance;
-				var player = sim.GetObject (Simulator.PLAYER_ID);
-				foreach (var enemy in sim.ListEnemies()) {
-					var dx = Math.Sign (player.X - enemy.Value.X);
-					var dy = Math.Sign (player.Y - enemy.Value.Y);
-					sim.CanShift (enemy.Key, dx, dy, true);
+				var spawn = sim.Random (100);
+				if (spawn > 90 && sim.world.entities.Count < MAX_ENTITIES) {
+					var p = sim.GetObject (Simulator.PLAYER_ID);
+					var minX = p.X - 7;
+					var minY = p.Y - 5;
+					var maxX = p.X + 8;
+					var maxY = p.Y + 6;
+					var possibleCells = new List<Vector2i> ();
+					for(int y = minY; y < maxY; y++) {
+						for(int x = minX; x < maxX; x++) {
+							if (
+								!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
+								sim.world.IsWalkable (x, y) &&
+								sim.GetObjectAt(x, y) == null
+							) {
+								possibleCells.Add (new Vector2i (x, y));
+							}
+						}
+					}
+					if (possibleCells.Count > 0) {
+						var position = possibleCells [sim.Random (possibleCells.Count)];
+						sim.CreateObject(sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
+						Logger.Info ("AreaAiEvent", "Run", "Created object at " + position.ToString());
+					}
 				}
 			}
-			// XXX end of test
 
 			return true;
 		}

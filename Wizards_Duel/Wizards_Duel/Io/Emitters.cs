@@ -165,6 +165,38 @@ namespace WizardsDuel.Io
 		}
 	}
 
+	public class BurstInSpawner: Spawner {
+		private float deltaForce;
+		private float minForce;
+		private float minAngle;
+		private float deltaAngle;
+		private float deltaRadius;
+		private float minRadius;
+
+		public BurstInSpawner(float maxRadius, float minRadius, float maxForce, float minForce = 0f, float minAngle = 0f, float maxAngle = (float)Math.PI * 2) {
+			this.deltaForce = maxForce - minForce;
+			this.minForce = minForce;
+			this.deltaAngle = maxAngle - minAngle;
+			this.minAngle = minAngle;
+			this.deltaRadius= maxRadius - minRadius;
+			this.minRadius = minRadius;
+		}
+
+		override public void Apply(Particle particle) {
+			var force = this.minForce + Simulator.Instance.Random() * this.deltaForce;
+			var angle = this.minAngle + Simulator.Instance.Random() * this.deltaAngle;
+			var radius = this.minRadius + Simulator.Instance.Random() * this.deltaRadius;
+
+			var x = particle.Position.X + radius * (float)Math.Cos (angle);
+			var y = particle.Position.Y + radius * (float)Math.Sin (angle); 
+			particle.Position = new Vector2f(x, y);
+
+			var forceX = -force * (float)Math.Cos (angle);
+			var forceY = -force * (float)Math.Sin (angle);
+			particle.Velocity = new Vector2f (forceX, forceY);
+		}
+	}
+
 	public class BoxSpawner: Spawner {
 		private float height;
 		private float width;

@@ -17,15 +17,47 @@
 using System;
 using System.Collections.Generic;
 using WizardsDuel.Utils;
+using SFML.Graphics;
+using SFML.Window;
 
 namespace WizardsDuel.Game
 {
 	public class Entity
 	{
+		public Color DeathMain = Color.Red;
+		public IntRect DeathRect = new IntRect (0, 0, 1, 1);
+		public Color DeathSecundary = Color.Black;
+		public WizardsDuel.Io.OutObject OutObject = null;
 		public Dictionary<string, int> Vars = new Dictionary<string, int>();
 		public int X = 0;
 		public int Y = 0;
-		public WizardsDuel.Io.OutObject OutObject = null;
+
+		public Entity(string id) {
+			this.ID = id;
+		}
+
+		public int GetVar(string name, int def=0) {
+			int res;
+			if (this.Vars.TryGetValue (name, out res) == true) {
+				return res;
+			} else {
+				return def;
+			}
+		}
+
+		public string ID {
+			get;
+			protected set;
+		}
+
+		public void SetVar(string name, int value) {
+			this.Vars[name] = value;
+		}
+
+		public bool Static {
+			get;
+			set;
+		}
 	}
 
 	public class TileTemplate {
@@ -41,12 +73,12 @@ namespace WizardsDuel.Game
 
 	public class World
 	{
-		public Dictionary<string, Entity> entities = new Dictionary<string, Entity>();
-		public WizardsDuel.Io.WorldView worldView = null;
-
-		public Dictionary<string, TileTemplate> tiles = new Dictionary<string, TileTemplate>();
-		public Tile[,] map;
 		public const string DEFAULT_TILE_ID = "DEFAULT";
+
+		public Dictionary<string, Entity> entities = new Dictionary<string, Entity>();
+		public Tile[,] map;
+		public Dictionary<string, TileTemplate> tiles = new Dictionary<string, TileTemplate>();
+		public WizardsDuel.Io.WorldView worldView = null;
 
 		public World () {
 			var tt = new TileTemplate ();
@@ -60,6 +92,8 @@ namespace WizardsDuel.Game
 			tt.IsSolid = true;
 			this.SetTileTemplate("#", tt);
 		}
+
+		public Vector2i EndCell { get; set; }
 
 		/// <summary>
 		/// Returns the ID of the object at x, y if any, null otherwise
@@ -94,8 +128,20 @@ namespace WizardsDuel.Game
 
 		public int GridWidth { get; set; }
 
+		public bool InLos(int x, int y) {
+			return (IsValid (x, y) && this.GetTile (x, y).InLos);
+		}
+
+		public bool IsExplored(int x, int y) {
+			return (IsValid (x, y) && this.GetTile (x, y).IsExplored);
+		}
+
 		public bool IsValid(int x, int y) {
-			return (x >= 0 && x < this.GridWidth && y >= 0 && y < this.GridHeight);
+			return (x >= 0 && x < this.GridWidth-1 && y >= 0 && y < this.GridHeight-1);
+		}
+
+		public bool IsWalkable(int x, int y) {
+			return (IsValid (x, y) && this.GetTile (x, y).Template.IsWalkable);
 		}
 
 		public void SetMap (string[] dungeon) {
@@ -155,6 +201,8 @@ namespace WizardsDuel.Game
 		public void SetTileTemplate(string glyph, TileTemplate tt) {
 			this.tiles [glyph] = tt;
 		}
+
+		public Vector2i StartCell { get; set; }
 	}
 }
 
