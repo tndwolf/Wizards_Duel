@@ -24,6 +24,7 @@ namespace WizardsDuel.Io
 {
 	static public class UiFactory {
 		static public WorldView LoadPage(string xmlfile, string pageId = "page_0") {
+			IoManager.Clear ();
 			XmlDocument xdoc = new XmlDocument();
 			xdoc.Load(xmlfile);
 			WorldView res = null;

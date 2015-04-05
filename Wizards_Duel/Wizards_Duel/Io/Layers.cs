@@ -433,7 +433,7 @@ namespace WizardsDuel.Io
 			this.AmbientLight = new Color (255, 255, 255);
 			this.layerTexture = new RenderTexture ((uint)this.Width, (uint)this.Height);
 			this.layerSprite = new Sprite (this.layerTexture.Texture);
-			this.lightTexture = IoManager.CreateShadedCircle2 ();
+			this.lightTexture = IoManager.CreateShadedCircle ();
 			this.Blend = BlendMode.Add;
 		}
 

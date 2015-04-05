@@ -187,6 +187,31 @@ namespace WizardsDuel.Game
 		}
 	}
 
+	public class CastEvent: ActorEvent {
+		public CastEvent(string oid, int targetX, int targetY, long deltaTime = 0):
+		base (oid, deltaTime) {
+			this.TargetX = targetX;
+			this.TargetY = targetY;
+			//Logger.Debug ("ShiftEvent", "ShiftEvent", "Added to " + oid);
+		}
+
+		public int TargetX {
+			get;
+			set;
+		}
+
+		public int TargetY {
+			get;
+			set;
+		}
+
+		override public bool Run() {
+			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
+			Simulator.Instance.Cast(this.Actor, this.TargetX, this.TargetY);
+			return true;
+		}
+	}
+
 	public class ShiftEvent: ActorEvent {
 		public ShiftEvent(string oid, int dx, int dy, long deltaTime = 0):
 		base (oid, deltaTime) {
@@ -207,7 +232,11 @@ namespace WizardsDuel.Game
 
 		override public bool Run() {
 			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
-			Simulator.Instance.CanShift(this.Actor, this.DX, this.DY, true);
+			if (Simulator.Instance.CanShift (this.Actor, this.DX, this.DY, true) == false) {
+				if (Simulator.Instance.CanShift (this.Actor, this.DX, 0, true) == false) {
+					Simulator.Instance.CanShift (this.Actor, 0, this.DY, true);
+				}
+			}
 			return true;
 		}
 	}
@@ -248,36 +277,51 @@ namespace WizardsDuel.Game
 			this.DeltaTime = (acted == false) ? 0 : 10; // XXX this should come from the speed of the player actor!
 			this.eventDispatcher.AppendEvent (this);
 
-			if (acted == true) {
+			/*if (acted == true) {
+				var turn = ++this.eventDispatcher.turnCount;
+				if (turn % 10 == 9) {
+					var sim = Simulator.Instance;
+					var pc = sim.GetObject (Simulator.PLAYER_ID);
+					var buff = sim.GetObject(sim.GetObjectAt (pc.X, pc.Y));
+					if (buff == null || buff.TemplateID != "bp_fire_lava") {
+						var id = "lava_" + turn.ToString ();
+						sim.CreateObject (id, "bp_fire_lava", pc.X, pc.Y);
+						var lava = sim.GetObject (id);
+						lava.OutObject.SetAnimation ("CREATE");
+						//sim.CreateParticleAt ("p_lava", lava.X, lava.Y);
+					}
+				}
+			}//*/
+
+			/*if (acted == true) {
 				//5-5 7-7
 				var MAX_ENTITIES = 10;
 				var sim = Simulator.Instance;
-				var spawn = sim.Random (100);
-				if (spawn > 90 && sim.world.entities.Count < MAX_ENTITIES) {
-					var p = sim.GetObject (Simulator.PLAYER_ID);
-					var minX = p.X - 7;
-					var minY = p.Y - 5;
-					var maxX = p.X + 8;
-					var maxY = p.Y + 6;
-					var possibleCells = new List<Vector2i> ();
-					for(int y = minY; y < maxY; y++) {
-						for(int x = minX; x < maxX; x++) {
-							if (
-								!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
-								sim.world.IsWalkable (x, y) &&
-								sim.GetObjectAt(x, y) == null
-							) {
-								possibleCells.Add (new Vector2i (x, y));
+					var spawn = sim.Random (100);
+					if (spawn > 10 && sim.world.entities.Count < MAX_ENTITIES) {
+						var p = sim.GetObject (Simulator.PLAYER_ID);
+						var minX = p.X - 7;
+						var minY = p.Y - 5;
+						var maxX = p.X + 8;
+						var maxY = p.Y + 6;
+						var possibleCells = new List<Vector2i> ();
+						for (int y = minY; y < maxY; y++) {
+							for (int x = minX; x < maxX; x++) {
+								if (
+									!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
+									sim.world.IsWalkable (x, y) &&
+									sim.GetObjectAt (x, y) == null) {
+									possibleCells.Add (new Vector2i (x, y));
+								}
 							}
 						}
+						if (possibleCells.Count > 0) {
+							var position = possibleCells [sim.Random (possibleCells.Count)];
+							sim.CreateObject (sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
+							Logger.Info ("AreaAiEvent", "Run", "Created object at " + position.ToString ());
+						}
 					}
-					if (possibleCells.Count > 0) {
-						var position = possibleCells [sim.Random (possibleCells.Count)];
-						sim.CreateObject(sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
-						Logger.Info ("AreaAiEvent", "Run", "Created object at " + position.ToString());
-					}
-				}
-			}
+			}//*/
 
 			return true;
 		}

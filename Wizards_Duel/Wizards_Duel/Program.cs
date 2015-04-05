@@ -54,13 +54,10 @@ namespace WizardsDuel
 			}
 
 			WorldView tm;
-			var showingGrid = false;
 			var simulator = Simulator.Instance;//new Simulator (out tm);
 			simulator.Initialize (out tm);
-			tm.EnableGrid(showingGrid);
 			//tm.ShowGuides = true;
 
-			simulator.AddLight (Simulator.PLAYER_ID, 300, new Color(254, 250, 235));
 			IoManager.PlayMusic ("test1");
 			while (true) {
 				var inputs = IoManager.GetInputs ();
@@ -82,17 +79,8 @@ namespace WizardsDuel
 					simulator.SetUserEvent(new ShiftEvent(Simulator.PLAYER_ID, -1, -1));
 				} else if (inputs.Command == InputCommands.DOWN_LEFT) {
 					simulator.SetUserEvent(new ShiftEvent(Simulator.PLAYER_ID, -1, 1));
-				} else if (inputs.Command == InputCommands.MOUSE_RIGHT) {
-					/*Random rnd = new Random();
-					var colmin = 100;//100
-					var colmax = 155;//255
-					var col = new Color ((byte)rnd.Next(colmin, colmax), (byte)rnd.Next(colmin, colmax), (byte)rnd.Next(colmin, colmax));
-					var rad = (float)rnd.Next (50, 150);
-					simulator.AddLight (inputs.MouseX, inputs.MouseY, rad, col);*/
-					//simulator.Cast (Simulator.PLAYER_ID);
 				} else if (inputs.Command == InputCommands.TOGGLE_GRID) {
-					showingGrid = !showingGrid;
-					tm.EnableGrid(showingGrid);
+					simulator.ToggleGrid ();
 				} else {
 					//Console.WriteLine (inputs.Command.ToString ());
 				}

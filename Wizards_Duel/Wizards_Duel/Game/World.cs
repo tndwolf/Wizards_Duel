@@ -22,8 +22,8 @@ using SFML.Window;
 
 namespace WizardsDuel.Game
 {
-	public class Entity
-	{
+	public class Entity: EventObject {
+		public string DeathAnimation = String.Empty;
 		public Color DeathMain = Color.Red;
 		public IntRect DeathRect = new IntRect (0, 0, 1, 1);
 		public Color DeathSecundary = Color.Black;
@@ -32,8 +32,19 @@ namespace WizardsDuel.Game
 		public int X = 0;
 		public int Y = 0;
 
-		public Entity(string id) {
+		public Entity(string id, string templateId = "") {
 			this.ID = id;
+			this.TemplateID = templateId;
+		}
+
+		public bool Dressing {
+			get;
+			set;
+		}
+
+		public string Faction {
+			get;
+			set;
 		}
 
 		public int GetVar(string name, int def=0) {
@@ -58,6 +69,74 @@ namespace WizardsDuel.Game
 			get;
 			set;
 		}
+
+		public string TemplateID {
+			get;
+			protected set;
+		}
+
+		#region EventObject implementation
+		public void Run (Simulator sim, EventManager ed) {
+			if (this.Dressing || this.Static) {
+				this.HasStarted = true;
+				this.HasEnded = true;
+			} else if (this.ID == Simulator.PLAYER_ID) {
+				Logger.Debug ("Entity", "Run", "Running PLAYER event");
+				if (ed.RunUserEvent () == true) {
+					this.HasStarted = true;
+					this.HasEnded = true;
+				} else {
+					this.HasStarted = false;
+					this.HasEnded = false;
+				}
+			} else {
+				//Logger.Debug ("Entity", "Run", "Running event");
+				//sim.CanShift (this.ID, sim.Random (3) - 1, sim.Random (3) - 1, true);
+				var player = sim.GetObject (Simulator.PLAYER_ID);
+				var dx = Math.Sign(player.X - this.X);
+				var dy = Math.Sign(player.Y - this.Y);
+				sim.CanShift(this.ID, dx, dy, true);
+
+				this.HasStarted = true;
+				this.HasEnded = true;
+			}
+		}
+
+		bool hasEnded = false;
+		public bool HasEnded {
+			get { return this.hasEnded && this.OutObject.IsInIdle; }
+			set { this.hasEnded = value; }
+		}
+
+		public bool HasStarted { get; set; }
+
+		public int Initiative { get; set; }
+
+		public bool IsWaiting { 
+			get { 
+				if (this.ID == Simulator.PLAYER_ID) {
+					return !Simulator.Instance.IsUserEventInQueue ();
+				} else {
+					return false;
+				}
+			}
+		}
+
+		public int UpdateInitiative () {
+			this.Initiative += 10;
+			return this.Initiative;
+		}
+
+		public int CompareTo (object obj) {
+			try {
+				var comp = (EventObject) obj;
+				return this.Initiative.CompareTo (comp.Initiative);
+			} catch (Exception ex) {
+				Logger.Debug ("Entity", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+				return 0;
+			}
+		}
+		#endregion
 	}
 
 	public class TileTemplate {
@@ -71,8 +150,7 @@ namespace WizardsDuel.Game
 		public bool IsExplored { get; set; }
 	}
 
-	public class World
-	{
+	public class World : EventObject {
 		public const string DEFAULT_TILE_ID = "DEFAULT";
 
 		public Dictionary<string, Entity> entities = new Dictionary<string, Entity>();
@@ -203,6 +281,62 @@ namespace WizardsDuel.Game
 		}
 
 		public Vector2i StartCell { get; set; }
+
+		#region EventObject implementation
+		public void Run (Simulator sim, EventManager ed) {
+			//5-5 7-7
+			var MAX_ENTITIES = 10;
+			var spawn = sim.Random (100);
+			if (spawn > 90 && sim.world.entities.Count < MAX_ENTITIES) {
+				var p = sim.GetObject (Simulator.PLAYER_ID);
+				var minX = p.X - 7;
+				var minY = p.Y - 5;
+				var maxX = p.X + 8;
+				var maxY = p.Y + 6;
+				var possibleCells = new List<Vector2i> ();
+				for(int y = minY; y < maxY; y++) {
+					for(int x = minX; x < maxX; x++) {
+						if (
+							!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
+							sim.world.IsWalkable (x, y) &&
+							sim.GetObjectAt(x, y) == null
+						) {
+							possibleCells.Add (new Vector2i (x, y));
+						}
+					}
+				}
+				if (possibleCells.Count > 0) {
+					var position = possibleCells [sim.Random (possibleCells.Count)];
+					sim.CreateObject(sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
+					Logger.Info ("World", "Run", "Created object at " + position.ToString());
+				}
+			}
+			this.HasEnded = true;
+		}
+
+		public bool HasEnded { get; set; }
+
+		public bool HasStarted { get; set; }
+
+		public int Initiative { get; set; }
+
+		public bool IsWaiting { get; protected set; }
+
+		public int UpdateInitiative () {
+			this.Initiative += 10;
+			return this.Initiative;
+		}
+
+		public int CompareTo (object obj) {
+			try {
+				var comp = (EventObject) obj;
+				return this.Initiative.CompareTo (comp.Initiative);
+			} catch (Exception ex) {
+				Logger.Debug ("World", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+				return 0;
+			}
+		}
+		#endregion
 	}
 }
 

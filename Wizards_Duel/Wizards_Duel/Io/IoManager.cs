@@ -120,6 +120,21 @@ namespace WizardsDuel.Io
 		}
 
 		static public void ClearWidgets() {
+			foreach (var widget in IoManager.root) {
+				// unsubscribe all the widgets before clearing them
+				var clickable = widget as IClickable;
+				if (clickable != null) {
+					IoManager.window.MouseMoved -= clickable.OnMouseMove;
+					IoManager.window.MouseButtonPressed -= clickable.OnMousePressed;
+					IoManager.window.MouseButtonReleased -= clickable.OnMouseReleased;
+				}
+				var textarea = widget as ITextArea;
+				if (textarea != null) {
+					IoManager.window.KeyPressed -= textarea.OnKeyPressed;
+					IoManager.window.KeyReleased -= textarea.OnKeyReleased;
+					IoManager.window.TextEntered -= textarea.OnTextEntered; 
+				}
+			}
 			IoManager.root.Clear();
 		}
 
@@ -155,7 +170,7 @@ namespace WizardsDuel.Io
 		/// It uses a quadratic falloff function.
 		/// </summary>
 		/// <returns>The shaded circle texture.</returns>
-		public static Texture CreateShadedCircle2() {
+		public static Texture CreateShadedCircle() {
 			Texture tex;
 			if (IoManager.textures.TryGetValue (IoManager.LIGHT_TEXTURE_ID, out tex) == false) {
 				var R_MAX = IoManager.LIGHT_TEXTRE_MAX_RADIUS;

@@ -62,9 +62,13 @@ namespace WizardsDuel.Game
 		static public Entity LoadFromTemplate(string templateId, string assignedId) {
 			try {
 				XmlNode template = GameFactory.xdoc.SelectSingleNode ("//blueprint[@id='" + templateId + "']");
+				var res = new Entity (assignedId, templateId);
 
-				var res = new Entity (assignedId);
-				res.Static = XmlUtilities.GetBool(template, "static");
+				var properties = template.SelectSingleNode("./properties");
+				res.Faction = XmlUtilities.GetString(properties, "faction");
+				res.Static = XmlUtilities.GetBool(properties, "static");
+				res.Dressing = XmlUtilities.GetBool(properties, "dressing");
+
 				var variables = template.SelectNodes("./var");
 				for (int v = 0; v < variables.Count; v++) {
 					res.Vars.Add(
@@ -74,6 +78,7 @@ namespace WizardsDuel.Game
 				}
 
 				var death = template.SelectSingleNode("./death");
+				res.DeathAnimation = XmlUtilities.GetString(death, "animation", String.Empty);
 				res.DeathMain = XmlUtilities.GetColor(death, "color1", Color.Red);
 				res.DeathSecundary = XmlUtilities.GetColor(death, "color2", Color.Black);
 				res.DeathRect.Left = XmlUtilities.GetInt(death, "offsetX");
@@ -91,6 +96,7 @@ namespace WizardsDuel.Game
 						XmlUtilities.GetInt(outTemplate, "defaultH")
 					)
 				);
+				res.OutObject.ZIndex = XmlUtilities.GetInt(outTemplate, "zIndex");
 
 				var animations = outTemplate.SelectNodes("./animation");
 				for (int a = 0; a < animations.Count; a++) {

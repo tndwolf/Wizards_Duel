@@ -138,6 +138,14 @@ namespace WizardsDuel.Io
 
 		public bool ShowGuides { get; set; }
 
+		public void ToggleGrid() {
+			try {
+				this.layers[this.gridLayer].Enabled = (this.layers[this.gridLayer].Enabled == true) ? false : true;
+			} catch (Exception ex) {
+				Logger.Warning("WorldView", "ToggleGrid", ex.ToString());
+			}
+		}
+
 		#region layer management
 		public void AddLayer(Layer l, LayerType type = LayerType.UNDEFINED) {
 			if (l.GetType () == typeof(ObjectsLayer)) {
@@ -186,23 +194,21 @@ namespace WizardsDuel.Io
 		#endregion
 
 		#region IClickable implementation
-
-		public void OnMouseMove (object sender, MouseMoveEventArgs e)
-		{
+		public void OnMouseMove (object sender, MouseMoveEventArgs e) {
 			return;
 		}
 
-		public void OnMousePressed (object sender, MouseButtonEventArgs e)
-		{
+		public void OnMousePressed (object sender, MouseButtonEventArgs e) {
 			var gx = (int)(this.referenceObject.CenterX - this.HalfWidth + e.X) / this.CellWidth;
 			var gy = (int)(this.referenceObject.CenterY - this.HalfHeight + e.Y) / this.CellHeight;
 			var gl = this.layers [this.gridLayer] as GridLayer;
  			gl.Selected = new Vector2i (gx, gy);
-			Simulator.Instance.Cast(Simulator.PLAYER_ID, gx, gy);
+			//Simulator.Instance.Cast(Simulator.PLAYER_ID, gx, gy);
+			Simulator.Instance.SetUserEvent(new CastEvent(Simulator.PLAYER_ID, gx, gy));
 
-			var ruleset = this.ruleset["WALL-FACING"];
+			//var ruleset = this.ruleset["WALL-FACING"];
 			//var layer = this.WallLayer;
-			for (var r = 1; r < ruleset.Count; r++) {
+			/*for (var r = 1; r < ruleset.Count; r++) {
 				var rule = ruleset[r];
 				if (rule.Test (gx, gy, this.dungeon) == true) {
 					Logger.Debug("WorldView", "OnMousePressed", "Rule at " + gx.ToString() + "," + gy.ToString() + ": " + rule.ToString());
@@ -211,11 +217,10 @@ namespace WizardsDuel.Io
 					return;
 				}
 			}
-			Logger.Debug("WorldView", "OnMousePressed", "No rule found at " + gx.ToString() + "," + gy.ToString());
+			Logger.Debug("WorldView", "OnMousePressed", "No rule found at " + gx.ToString() + "," + gy.ToString());*/
 		}
 
-		public void OnMouseReleased (object sender, MouseButtonEventArgs e)
-		{
+		public void OnMouseReleased (object sender, MouseButtonEventArgs e) {
 			return;
 		}
 

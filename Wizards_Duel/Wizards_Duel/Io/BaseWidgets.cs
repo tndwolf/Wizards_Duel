@@ -100,7 +100,7 @@ namespace WizardsDuel.Io
 	/// <summary>
 	/// Basic container for widgets. It does no transformations on the contents.
 	/// </summary>
-	public class Frame: Widget {
+	public class Frame: Widget, IEnumerable<Widget> {
 		List<Widget> widgets = new List<Widget>();
 
 		public Frame() {
@@ -117,6 +117,16 @@ namespace WizardsDuel.Io
 		virtual public void DeleteWidget(Widget widget) {
 			this.widgets.Remove (widget);
 		}
+
+		#region IEnumerable implementation
+		public IEnumerator<Widget> GetEnumerator () {
+			return this.widgets.GetEnumerator ();
+		}
+
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+			return GetEnumerator ();
+		}
+		#endregion
 
 		override public void Draw(RenderTarget target, RenderStates states) {
 			states.Transform.Translate(this.Position);

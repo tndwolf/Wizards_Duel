@@ -27,6 +27,7 @@ namespace WizardsDuel.Game
 	{
 		internal int createdEntityCount = 0;
 		public EventDispatcher events;
+		public EventManager events2;
 		private static Simulator instance;
 		private Random rng = new Random ();
 		internal World world = new World();
@@ -53,6 +54,7 @@ namespace WizardsDuel.Game
 			this.world = GameFactory.LoadGame(DEFAULT_DATA);
 			worldView = this.world.worldView;
 			this.events = new EventDispatcher(this);
+			this.events2 = new EventManager (this);
 			this.LoadArea ();
 		}
 
@@ -81,7 +83,24 @@ namespace WizardsDuel.Game
 		}
 
 		public void Attack(string attackerId, string targetId) {
-			this.events.AppendEvent(new AttackEvent(GetObject(attackerId), GetObject(targetId)));
+			//this.events.AppendEvent(new AttackEvent(GetObject(attackerId), GetObject(targetId)));
+			var Actor = GetObject(attackerId);
+			var Target = GetObject (targetId);
+			Logger.Debug ("AttackEvent", "Run", Actor + " attacks " + Target);
+			SetAnimation (Actor, "ATTACK");
+			if (Actor.X != Target.X) {
+				Actor.OutObject.Facing = (Actor.X < Target.X) ? Facing.RIGHT : Facing.LEFT;
+				Target.OutObject.Facing = (Actor.X < Target.X) ? Facing.LEFT : Facing.RIGHT;
+			}
+			var newHealth = Target.GetVar (Simulator.HEALTH_VARIABLE, 1) - 1;
+			Target.SetVar (Simulator.HEALTH_VARIABLE, newHealth);
+			if (newHealth > 0) {
+				if (Target.GetVar ("armor") < 1) {
+					Simulator.Instance.Bleed (Target);
+				}
+			} else {
+				Simulator.Instance.Kill (Target);
+			}
 		}
 
 		public void Bleed(Entity target) {
@@ -155,13 +174,17 @@ namespace WizardsDuel.Game
 					} else {
 						CreateParticleOn ("p_hurt", targetId);
 						this.events.WaitFor (900);
-						this.AddEvent (new KillEvent (target.ID));
-						//Kill (target);
+						//this.AddEvent (new KillEvent (target.ID));
+						Kill (target);
 					}
 				} else {
-					/*if (gx % 2 == 1) {
-						CreateObject (this.createdEntityCount.ToString (), "bp_firefly", gx, gy);
-					} else {*/
+					//if (gx % 2 == 1) {
+						//CreateObject (this.createdEntityCount.ToString (), "bp_firefly", gx, gy);
+						var id = "lava_" + createdEntityCount.ToString ();
+						CreateObject (id, "bp_fire_lava", gx, gy);
+						var lava = GetObject (id);
+						SetAnimation (lava, "CREATE");
+					//} else {*/
 						//CreateObject (this.createdEntityCount.ToString (), "bp_fire_entrance", gx, gy);
 						//CreateParticleAt ("p_lava", gx, gy);
 					//}
@@ -193,6 +216,7 @@ namespace WizardsDuel.Game
 					//CreateParticleOn (SPAWN_PARTICLE, newEntity);
 					//this.events.AppendEvent (new AiEvent (oid, 10));
 				}
+				this.events2.QueueObject (newEntity, createdEntityCount + 10);
 				createdEntityCount++;
 			} else {
 				Logger.Warning ("Simulator", "CreateObject", "cannot create " + oid + " " + templateId);
@@ -201,7 +225,6 @@ namespace WizardsDuel.Game
 
 		public void CreateParticleAt(string pid, int gx, int gy) {
 			var ps = GameFactory.LoadParticleFromTemplate (pid, gx * this.CellWidth, gy * this.CellHeight, this.world.worldView.ObjectsLayer);
-			ps.LightsLayer = this.world.worldView.LightLayer;
 			IoManager.AddWidget (ps);
 			Logger.Debug ("Simulator", "CreateParticle", ps.ToString());
 		}
@@ -209,7 +232,6 @@ namespace WizardsDuel.Game
 		public void CreateParticleOn(string pid, Entity target) {
 			var flip = (target.OutObject.Facing == Facing.RIGHT) ? false : true;
 			var ps = GameFactory.LoadParticleFromTemplate (pid, 0f, 0f, this.world.worldView.ObjectsLayer, flip);
-			ps.LightsLayer = this.world.worldView.LightLayer;
 			target.OutObject.AddParticleSystem (ps);
 			IoManager.AddWidget (ps);
 		}
@@ -218,7 +240,6 @@ namespace WizardsDuel.Game
 			Entity res;
 			if (this.world.entities.TryGetValue (oid, out res)) {
 				var ps = GameFactory.LoadParticleFromTemplate (pid, 0f, 0f, this.world.worldView.ObjectsLayer);
-				ps.LightsLayer = this.world.worldView.LightLayer;
 				res.OutObject.AddParticleSystem (ps);
 				IoManager.AddWidget (ps);
 			}
@@ -233,7 +254,8 @@ namespace WizardsDuel.Game
 		}
 
 		public void DoLogic() {
-			this.events.Dispatch ();
+			//this.events.Dispatch ();
+			this.events2.Dispatch ();
 		}
 
 		public string GetObjectAt(int x, int y) {
@@ -247,6 +269,10 @@ namespace WizardsDuel.Game
 			} else {
 				return null;
 			}
+		}
+
+		public bool IsUserEventInQueue() {
+			return this.events2.UserEventInQueue;
 		}
 
 		public void Kill(Entity target) {
@@ -276,26 +302,32 @@ namespace WizardsDuel.Game
 			ps.AddEmitter (emitter);
 
 			//var ps = GameFactory.LoadParticleFromTemplate (pid, target.X * this.CellWidth, target.Y * this.CellHeight, this.world.worldView.ObjectsLayer);
-			ps.LightsLayer = this.world.worldView.LightLayer;
 			IoManager.AddWidget (ps);
 			target.OutObject.AddAnimator (new FadeAnimation (0, 0, 400));
 			this.events.WaitFor (250);
-			this.events.AppendEvent (new DestroyEvent (target.ID));
+			this.events2.SetUserEvent (new DestroyEvent (target.ID));
 			//this.DestroyObject (target.ID);
 		}
 
 		public void LoadArea() {
+			//var tmpWorldView = world.worldView;
+			this.world = GameFactory.LoadGame(DEFAULT_DATA);
+			//this.world.worldView = tmpWorldView;
 			this.events = new EventDispatcher(this);
 			this.events.AppendEvent (new AreaAiEvent (10));
+			this.events2 = new EventManager (this);
+			this.events2.QueueObject (this.world, 15);
 
 			// by default always create the player object, which is indestructible
 			if (!this.world.entities.ContainsKey(PLAYER_ID))
 				this.CreateObject (PLAYER_ID, "bp_ezekiel");
-			this.world.worldView.ReferenceObject = this.world.entities [PLAYER_ID].OutObject;
+			this.world.worldView.ReferenceObject = GetObject (PLAYER_ID).OutObject;//this.world.entities [PLAYER_ID].OutObject;
+			this.AddLight (PLAYER_ID, 300, new Color(254, 250, 235));
 
 			var wf = new WorldFactory ();
 			wf.Initialize (DEFAULT_LEVEL);
 			wf.Generate (this.world);
+			this.world.worldView.EnableGrid (false);
 
 			if (world.StartCell.X != 0 && world.StartCell.Y != 0) {
 				Move(PLAYER_ID, world.StartCell.X, world.StartCell.Y);
@@ -358,8 +390,22 @@ namespace WizardsDuel.Game
 			return this.rng.Next (min, max);
 		}
 
+		public void SetAnimation(Entity obj, string animation) {
+			if (obj != null) {
+				obj.OutObject.SetAnimation (animation);
+			}
+		}
+
+		public void SetAnimation(string oid, string animation) {
+			var o = this.GetObject (oid);
+			if (o != null) {
+				o.OutObject.SetAnimation (animation);
+			}
+		}
+
 		public void SetUserEvent(Event evt) {
-			this.events.SetUserEvent (evt);
+			//this.events.SetUserEvent (evt);
+			this.events2.SetUserEvent (evt);
 		}
 
 		public void Shift(string oid, int dx, int dy) {
@@ -372,8 +418,8 @@ namespace WizardsDuel.Game
 				//Logger.Debug ("Simulator", "Shift", "Shifting 2");
 				var endX = res.X + dx;
 				var endY = res.Y + dy;
-				var bufferId = this.world.GetObjectAt (endX, endY);
-				if (bufferId == null) {
+				var bufferId = GetObjectAt (endX, endY);
+				if (bufferId == null || GetObject (bufferId).Dressing == true) {
 					// nothing in the way, move around
 					res.X = endX;
 					res.Y = endY;
@@ -389,20 +435,28 @@ namespace WizardsDuel.Game
 					} else if (dx > 0) {
 						res.OutObject.Facing = Io.Facing.RIGHT;
 					}
-					res.OutObject.SetAnimation ("SHIFT");
+					SetAnimation (res, "SHIFT");
 					// goto new area
 					Logger.Debug ("Simulator", "Shift", "Moving to " + endX.ToString () + "," + endY.ToString () +  " vs " + world.EndCell.ToString());
 					if (oid == PLAYER_ID && world.EndCell.X == endX && world.EndCell.Y == endY) {
-						//LoadArea ();
+						LoadArea ();
 					}
-				} else {
+				} else if (res.Faction != GetObject (bufferId).Faction) {
 					// something on my path, attack it
-					Logger.Debug ("Simulator", "Shift", "Found entity " + res.ToString() + " at " + endX.ToString () + "," + endY.ToString ());
+					Logger.Debug ("Simulator", "Shift", "Found entity " + res.ToString () + " at " + endX.ToString () + "," + endY.ToString ());
 					//events.WaitFor (500); // TODO movement animation end
 					this.Attack (oid, bufferId);
 				}
 				//Logger.Debug ("Simulator", "Shift", "Shifting 4");
 			}
+		}
+
+		public void ShowGrid(bool show) {
+			world.worldView.EnableGrid (show);
+		}
+
+		public void ToggleGrid() {
+			world.worldView.ToggleGrid ();
 		}
 	}
 }

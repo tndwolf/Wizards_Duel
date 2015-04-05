@@ -80,7 +80,6 @@ namespace WizardsDuel.Io
 		public void AddParticle(Particle particle) {
 			this.particles.Add (particle);
 			this.Layer.AddObject (particle);
-			//Logger.Debug ("ParticleSystem", "AddParticle", "Siamo sicuri che ha aggiunto qualcosa? " + particle.Position.ToString());
 		}
 
 		override public void Draw(RenderTarget target, RenderStates states) {
@@ -103,8 +102,6 @@ namespace WizardsDuel.Io
 			get;
 			protected set;
 		}
-
-		public LightLayer LightsLayer { get; set; }
 
 		override public Vector2f Position {
 			get { return base.Position; }
