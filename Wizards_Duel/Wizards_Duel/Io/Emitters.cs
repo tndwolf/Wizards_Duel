@@ -284,5 +284,18 @@ namespace WizardsDuel.Io
 			Simulator.Instance.AddLight (particle, this.radius, this.color);
 		}
 	}
+
+	public class SfxSpawner: Spawner {
+		private string sfx;
+
+		public SfxSpawner(string sfx) {
+			this.sfx = sfx;
+			IoManager.LoadSound (sfx);
+		}
+
+		override public void Apply(Particle particle) {
+			IoManager.PlaySound (this.sfx);
+		}
+	}
 }
 

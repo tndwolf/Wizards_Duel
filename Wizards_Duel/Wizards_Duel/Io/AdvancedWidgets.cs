@@ -27,10 +27,12 @@ namespace WizardsDuel.Io
 		public int duration; // duration in millis
 		public IntRect frame;
 		public Vector2f offset;
+		public string sfx;
 
-		public AnimationFrame(int u, int v, int width, int height, int duration) {
+		public AnimationFrame(int u, int v, int width, int height, int duration, string sfx="") {
 			this.frame = new IntRect (u, v, width, height);
 			this.duration = duration;
+			this.sfx = sfx;
 		}
 
 		override public string ToString() {
@@ -61,7 +63,7 @@ namespace WizardsDuel.Io
 		public void SetAnimation(OutObject obj) {
 			var sa = new SpriteAnimation ();
 			foreach (var frame in this.frames) {
-				sa.AppendSprite (frame.frame, frame.offset, frame.duration);
+				sa.AppendSprite (frame.frame, frame.offset, frame.duration, frame.sfx);
 			}
 			obj.AddAnimator (sa);
 		}

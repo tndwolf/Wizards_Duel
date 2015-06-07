@@ -222,6 +222,7 @@ namespace WizardsDuel.Io
 		public int millis;
 		public IntRect rect;
 		public Vector2f offset;
+		public string sfx;
 	}
 
 	public class ScaleAnimation: Animator {
@@ -324,9 +325,15 @@ namespace WizardsDuel.Io
 		/// <param name="sprite">Sprite.</param>
 		/// <param name="duration">Duration of the sprite in milliseconds. 
 		/// Note that it is different from when instancing the Animation directly</param>
-		public void AppendSprite(IntRect sprite, Vector2f soffset, int duration) {
+		public void AppendSprite(IntRect sprite, Vector2f soffset, int duration, string sfx="") {
 			var end = duration + this.endRef;
-			var kf = new KeyFrame() { millis = end, rect = sprite, offset = soffset};
+			if (sfx != "") {
+				if (IoManager.LoadSound (sfx) == null) {
+					// cannot load the sound, useless to set it
+					sfx = "";
+				}
+			}
+			var kf = new KeyFrame() { millis = end, rect = sprite, offset = soffset, sfx = sfx};
 			//Console.WriteLine ("Appending sprite " + kf.rect.ToString() + " ending at " + end.ToString());
 			this.frames.Add (kf);
 			this.endRef += duration;
@@ -361,6 +368,9 @@ namespace WizardsDuel.Io
 					var sprite = icon.Sprite;
 					icon.Sprite = this.frames [this.currFrame].rect;
 					icon.Padding = this.frames [this.currFrame].offset;
+					if (this.frames[this.currFrame].sfx != "") {
+						IoManager.PlaySound(this.frames[this.currFrame].sfx);
+					}
 				}
 			}
 			catch {

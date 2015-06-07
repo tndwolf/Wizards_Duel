@@ -56,25 +56,47 @@ namespace WizardsDuel.Game
 	}
 
 	public class EventManager {
-		List<EventObject> queue = new List<EventObject> ();
+		List<EventObject> actorQueue = new List<EventObject> ();
+		List<Event> eventQueue = new List<Event> ();
+		bool eventQueueLocked = false;
 		Simulator simulator;
 		public Event userEvent;
-		long waitUntil = 0;
 
 		public EventManager (Simulator sim) {
 			this.simulator = sim;
 			this.userEvent = null;
 		}
 
-		public void Dispatch() {
-			if (this.waitUntil > IoManager.Time) {
-				// wait a certain real-time amount
-				return;
+		public void AppendEvent(Event evt) {
+			if (this.eventQueueLocked == false) {
+				this.eventQueue.Add (evt);
 			}
-			//Logger.Debug ("EventManager", "Dispatch", "Run dispatcher");
-			if (this.queue.Count > 0) {
-				var actor = this.queue [0];
-				Logger.Debug ("EventManager", "Dispatch", "Object to process " + actor.GetHashCode());
+			// else throw?
+		}
+
+		public void ClearUserEvent() {
+			Logger.Debug ("EventManager", "ClearUserEvent", "Clearing user events");
+			this.userEvent = null;
+		}
+
+		public void Dispatch() {
+			// first run events
+			this.eventQueueLocked = true;
+			foreach (var evt in this.eventQueue) {
+				Logger.Debug ("EventManager", "Dispatch", "Processing event " + evt.GetType().ToString());
+				if (evt.Run () == false) {
+					this.eventQueueLocked = false;
+					return;
+				} else {
+					evt.DeleteMe = true;
+				}
+			}
+			this.eventQueue.RemoveAll (x => x.DeleteMe == true);
+			this.eventQueueLocked = false;
+			// then run actors
+			if (this.actorQueue.Count > 0) {
+				var actor = this.actorQueue [0];
+				//Logger.Debug ("EventManager", "Dispatch", "Object to process " + actor.GetHashCode());
 				/*if (actor.HasStarted == false) {
 					Logger.Debug ("EventManager", "Dispatch", "Running object " + actor.GetHashCode ());
 					actor.Run (this.simulator, this);
@@ -100,33 +122,33 @@ namespace WizardsDuel.Game
 		}
 
 		public void QueueObject(EventObject obj, int initiative) {
-			Logger.Debug ("EventManager", "QueueObject", "Adding object " + obj.GetHashCode());
+			//Logger.Debug ("EventManager", "QueueObject", "Adding object " + obj.GetHashCode());
 			obj.Initiative = initiative;
 			obj.HasEnded = false;
 			obj.HasStarted = false;
 			//obj.IsWaiting = false;
-			if (this.queue.Count < 0) {
-				this.queue.Add (obj);
+			if (this.actorQueue.Count < 0) {
+				this.actorQueue.Add (obj);
 			} else {
-				for (int i = 0; i < queue.Count; i++) {
-					if (this.queue [i].Initiative > initiative) {
-						this.queue.Insert (i, obj);
+				for (int i = 0; i < actorQueue.Count; i++) {
+					if (this.actorQueue [i].Initiative > initiative) {
+						this.actorQueue.Insert (i, obj);
 						return;
 					}
 				}
-				this.queue.Add (obj);
+				this.actorQueue.Add (obj);
 			}
 		}
 
 		public void Replan(EventObject obj) {
 			var newInitiative = obj.UpdateInitiative ();
 			if (newInitiative < 0) {
-				this.queue.Remove (obj);
-				Logger.Debug ("EventManager", "Replan", "Removing object " + obj.GetHashCode ());
+				this.actorQueue.Remove (obj);
+				//Logger.Debug ("EventManager", "Replan", "Removing object " + obj.GetHashCode ());
 			} else {
 				obj.HasStarted = false;
 				obj.HasEnded = false;
-				this.queue.Sort ();
+				this.actorQueue.Sort ();
 			}
 		}
 
@@ -151,100 +173,15 @@ namespace WizardsDuel.Game
 		}
 
 		public void WaitFor(int millis) {
-			this.waitUntil = IoManager.Time + millis;
-		}
-	}
-
-	public class EventDispatcher
-	{
-		Simulator simulator;
-
-		bool canAddEvents = true;
-		List<Event> events = new List<Event>(); // TODO Maybe better as a LinkedList?
-		List<Event> eventsToBeAdded = new List<Event>();
-		Event nextUserEvent = null;
-		long time = 0; // this is the absolute simulation time
-		public long turnCount = 0; // number of players turns
-		long waitUntil = 0;
-
-		public EventDispatcher (Simulator sim) {
-			this.simulator = sim;
+			//this.waitUntil = IoManager.Time + millis;
+			this.AppendEvent (new WaitEvent (millis));
+			//this.userEvent = null;
 		}
 
-		public void AppendEvent(Event evt) {
-			if (this.canAddEvents == false) {
-				this.eventsToBeAdded.Add (evt);
-				return;
-			}
-			evt.StartTime = evt.DeltaTime + this.time;
-			var newEvents = new List<Event>();
-			bool added = false;
-			foreach (var refEvt in this.events) {
-				// the '<' guarantees that the event is queued after other
-				// events happening at the same timeref
-				if (evt.StartTime < refEvt.StartTime) {
-					newEvents.Add(evt);
-					added = true;
-				}
-				newEvents.Add (refEvt);
-			}
-			if (added == false) {
-				newEvents.Add (evt);
-			}
-			this.events = newEvents;
-		}
-
-		public void Dispatch() {
-			if (this.waitUntil > IoManager.Time) {
-				// wait a certain real-time amount
-				return;
-			}
-			this.UpdateEventQueue ();
-			var newEvents = new List<Event>();
-			this.canAddEvents = false;
-			foreach (var evt in this.events) {
-				if (evt == this.events [0]) {
-					this.time = evt.StartTime;
-					if (evt.Run () == false) {
-						newEvents.Add (evt);
-					}
-				} else {
-					newEvents.Add (evt);
-				}
-			}
-			this.events = newEvents;
-			this.canAddEvents = true;
-		}
-
-		public bool RunUserEvent() {
-			if (this.nextUserEvent == null) {
-				return false;
-			} else {
-				if (this.nextUserEvent.Run () == false) {
-					this.AppendEvent (this.nextUserEvent);
-				}
-				this.nextUserEvent = null;
-				return true;
-			}
-		}
-
-		public void SetUserEvent(Event evt) {
-			this.nextUserEvent = evt;
-		}
-
-		public void UpdateEventQueue() {
-			if (this.eventsToBeAdded.Count > 0) {
-				this.canAddEvents = true;
-				foreach (var evt in this.eventsToBeAdded) {
-					this.AppendEvent (evt);
-				}
-				this.eventsToBeAdded.Clear ();
-			}
-		}
-
-		public void WaitFor(int millis) {
-			this.waitUntil = IoManager.Time + millis;
+		public void WaitAndRun(int millis, Event evt) {
+			this.AppendEvent (new WaitEvent (millis));
+			this.AppendEvent (evt);
+			//this.userEvent = null;
 		}
 	}
 }
-

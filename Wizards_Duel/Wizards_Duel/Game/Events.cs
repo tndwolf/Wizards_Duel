@@ -22,10 +22,8 @@ using SFML.Window;
 
 namespace WizardsDuel.Game
 {
-	public class Event
-	{
-		public Event (long deltaTime = 0)
-		{
+	public class Event {
+		public Event (long deltaTime = 0) {
 			this.DeltaTime = deltaTime;
 			this.StartTime = 0;
 		}
@@ -36,6 +34,8 @@ namespace WizardsDuel.Game
 		virtual public bool Run() {
 			return true;
 		}
+
+		public bool DeleteMe { get; set; }
 
 		public long DeltaTime {
 			get;
@@ -80,7 +80,7 @@ namespace WizardsDuel.Game
 
 			//sim.CanShift(this.Actor, rnd.Next(-1,2), rnd.Next(-1,2), true);
 			sim.CanShift(this.Actor, dx, dy, true);
-			sim.events.AppendEvent (this);
+			//sim.events.AppendEvent (this);
 			return true;
 		}
 	}
@@ -140,7 +140,7 @@ namespace WizardsDuel.Game
 			}*/
 
 			this.DeltaTime = this.areaDeltaTime;
-			sim.events.AppendEvent (this);
+			//sim.events.AppendEvent (this);
 			return true;
 		}
 	}
@@ -150,7 +150,7 @@ namespace WizardsDuel.Game
 		base (attacker, target, deltaTime) {}
 
 		override public bool Run() {
-			Logger.Debug ("AttackEvent", "Run", this.Actor + " attacks " + this.Target);
+			Logger.Debug ("AttackEvent", "Run", this.Actor.ID + " attacks " + this.Target.ID);
 			this.Actor.OutObject.SetAnimation ("ATTACK");
 			if (this.Actor.X != this.Target.X) {
 				this.Actor.OutObject.Facing = (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
@@ -182,6 +182,7 @@ namespace WizardsDuel.Game
 		public DestroyEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
 
 		override public bool Run() {
+			Logger.Debug ("DestroyEvent", "Run", "Trying to kill " + this.Actor);
 			Simulator.Instance.DestroyObject (this.Actor);
 			return true;
 		}
@@ -265,8 +266,8 @@ namespace WizardsDuel.Game
 	}
 
 	public class UserEvent : Event {
-		EventDispatcher eventDispatcher;
-		public UserEvent(EventDispatcher ed, long deltaTime = 0): base (deltaTime) {
+		EventManager eventDispatcher;
+		public UserEvent(EventManager ed, long deltaTime = 0): base (deltaTime) {
 			this.eventDispatcher = ed;
 		}
 
@@ -275,7 +276,7 @@ namespace WizardsDuel.Game
 			var acted = this.eventDispatcher.RunUserEvent ();
 			this.StartTime = 0;
 			this.DeltaTime = (acted == false) ? 0 : 10; // XXX this should come from the speed of the player actor!
-			this.eventDispatcher.AppendEvent (this);
+			//this.eventDispatcher.AppendEvent (this);
 
 			/*if (acted == true) {
 				var turn = ++this.eventDispatcher.turnCount;
@@ -293,38 +294,26 @@ namespace WizardsDuel.Game
 				}
 			}//*/
 
-			/*if (acted == true) {
-				//5-5 7-7
-				var MAX_ENTITIES = 10;
-				var sim = Simulator.Instance;
-					var spawn = sim.Random (100);
-					if (spawn > 10 && sim.world.entities.Count < MAX_ENTITIES) {
-						var p = sim.GetObject (Simulator.PLAYER_ID);
-						var minX = p.X - 7;
-						var minY = p.Y - 5;
-						var maxX = p.X + 8;
-						var maxY = p.Y + 6;
-						var possibleCells = new List<Vector2i> ();
-						for (int y = minY; y < maxY; y++) {
-							for (int x = minX; x < maxX; x++) {
-								if (
-									!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
-									sim.world.IsWalkable (x, y) &&
-									sim.GetObjectAt (x, y) == null) {
-									possibleCells.Add (new Vector2i (x, y));
-								}
-							}
-						}
-						if (possibleCells.Count > 0) {
-							var position = possibleCells [sim.Random (possibleCells.Count)];
-							sim.CreateObject (sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
-							Logger.Info ("AreaAiEvent", "Run", "Created object at " + position.ToString ());
-						}
-					}
-			}//*/
-
 			return true;
 		}
 	}
-}
 
+	public class WaitEvent: Event {
+		public WaitEvent (long deltaTime = 0) {
+			this.EndTime = IoManager.Time + deltaTime;
+		}
+
+		/// <summary>
+		/// Executes this event, return true if the event has ended, false otherwise
+		/// </summary>
+		override public bool Run() {
+			Simulator.Instance.ClearUserEvent ();
+			return IoManager.Time > this.EndTime;
+		}
+
+		public long EndTime {
+			get;
+			set;
+		}
+	}
+}

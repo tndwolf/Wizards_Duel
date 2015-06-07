@@ -108,7 +108,8 @@ namespace WizardsDuel.Game
 							XmlUtilities.GetInt(frames[f], "y"),
 							XmlUtilities.GetInt(frames[f], "width"),
 							XmlUtilities.GetInt(frames[f], "height"),
-							XmlUtilities.GetInt(frames[f], "duration")
+							XmlUtilities.GetInt(frames[f], "duration"),
+							XmlUtilities.GetString(frames[f], "sfx")
 						);
 						frame.offset = new Vector2f(
 							XmlUtilities.GetFloat(frames[f], "offsetX"), 
@@ -278,6 +279,13 @@ namespace WizardsDuel.Game
 								XmlUtilities.GetFloat(children[c], "start"),
 								XmlUtilities.GetFloat(children[c], "end")
 							));
+							break;
+
+						case "sfxSpawner":
+							emitter.AddVariator (new SfxSpawner (
+								XmlUtilities.GetString(children[c], "sfx")
+							));
+							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New SfxSpawner: " + children[c].ToString());
 							break;
 						
 						case "zAnimation":

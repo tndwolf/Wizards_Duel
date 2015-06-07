@@ -384,7 +384,7 @@ namespace WizardsDuel.Io
 			circle.Texture = this.Texture;
 			circle.FillColor = this.Color;
 			if (Parent != null) {
-				circle.Position = new Vector2f(Parent.Position.X - this.Radius, Parent.Position.Y - this.Radius);
+				circle.Position = new Vector2f(Parent.CenterX - this.Radius, Parent.CenterY - this.Radius);
 				if (Parent.ToBeDeleted) {
 					this.Radius /= 1.5f;
 				}

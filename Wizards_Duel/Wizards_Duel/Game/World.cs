@@ -307,7 +307,16 @@ namespace WizardsDuel.Game
 				}
 				if (possibleCells.Count > 0) {
 					var position = possibleCells [sim.Random (possibleCells.Count)];
-					sim.CreateObject(sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
+					var r = sim.Random (100);
+					if (r < 60) {
+						sim.CreateObject (sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
+					} else if (r < 80) {
+						sim.CreateObject (sim.createdEntityCount.ToString (), "bp_fire_thug1", position.X, position.Y);
+					} else if (r < 90) {
+						sim.CreateObject (sim.createdEntityCount.ToString (), "bp_fire_salamander1", position.X, position.Y);
+					} else {
+						sim.CreateObject (sim.createdEntityCount.ToString (), "bp_fire_bronze_thug1", position.X, position.Y);
+					}
 					Logger.Info ("World", "Run", "Created object at " + position.ToString());
 				}
 			}

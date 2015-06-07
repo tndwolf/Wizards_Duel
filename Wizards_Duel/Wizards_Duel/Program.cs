@@ -43,6 +43,8 @@ namespace WizardsDuel
 				Logger.Blacklist("AddLayer");
 				Logger.Blacklist("SetDungeon");
 				Logger.Blacklist("CanShift");
+				Logger.Blacklist("WorldFactory");
+				Logger.Blacklist("TranslateAnimation");
 				//Logger.Blacklist("BackgroundMusic");
 				IoManager.Initialize ("Wizard's Duel", 1280, 720);
 				//Logger.Initialize (LogLevel.ALL, logPrintToScreen);

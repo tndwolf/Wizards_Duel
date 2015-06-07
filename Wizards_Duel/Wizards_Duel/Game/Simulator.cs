@@ -26,8 +26,7 @@ namespace WizardsDuel.Game
 	public class Simulator
 	{
 		internal int createdEntityCount = 0;
-		public EventDispatcher events;
-		public EventManager events2;
+		public EventManager events;
 		private static Simulator instance;
 		private Random rng = new Random ();
 		internal World world = new World();
@@ -53,8 +52,7 @@ namespace WizardsDuel.Game
 		public void Initialize(out WorldView worldView, bool initUserEvents = true) {
 			this.world = GameFactory.LoadGame(DEFAULT_DATA);
 			worldView = this.world.worldView;
-			this.events = new EventDispatcher(this);
-			this.events2 = new EventManager (this);
+			this.events = new EventManager (this);
 			this.LoadArea ();
 		}
 
@@ -86,7 +84,7 @@ namespace WizardsDuel.Game
 			//this.events.AppendEvent(new AttackEvent(GetObject(attackerId), GetObject(targetId)));
 			var Actor = GetObject(attackerId);
 			var Target = GetObject (targetId);
-			Logger.Debug ("AttackEvent", "Run", Actor + " attacks " + Target);
+			Logger.Debug ("Simulator", "Attack", Actor.ID + " attacks " + Target.ID);
 			SetAnimation (Actor, "ATTACK");
 			if (Actor.X != Target.X) {
 				Actor.OutObject.Facing = (Actor.X < Target.X) ? Facing.RIGHT : Facing.LEFT;
@@ -105,7 +103,7 @@ namespace WizardsDuel.Game
 
 		public void Bleed(Entity target) {
 			CreateParticleOn (BLOOD_PARTICLE, target);
-			this.events.WaitFor (250);
+			this.events.WaitFor (500);
 		}
 
 		public bool CanMove(string oid, int x, int y, bool moveIfPossible = false) {
@@ -173,17 +171,38 @@ namespace WizardsDuel.Game
 						}
 					} else {
 						CreateParticleOn ("p_hurt", targetId);
-						this.events.WaitFor (900);
+						//this.events2.WaitFor (900);
 						//this.AddEvent (new KillEvent (target.ID));
 						Kill (target);
 					}
 				} else {
 					//if (gx % 2 == 1) {
 						//CreateObject (this.createdEntityCount.ToString (), "bp_firefly", gx, gy);
+						/*var id = "lava_" + createdEntityCount.ToString ();
+						CreateObject (id, "bp_fire_lava", gx, gy);
+						var lava = GetObject (id);
+						SetAnimation (lava, "CREATE");*/
+					//System.Threading.Thread.Sleep(200);
+					/*for (int i = 0; i < 4; i++) {
 						var id = "lava_" + createdEntityCount.ToString ();
 						CreateObject (id, "bp_fire_lava", gx, gy);
 						var lava = GetObject (id);
+						lava.OutObject.X += (Random (6) - 3)*6;
+						lava.OutObject.Y += (Random (6) - 3)*6;
+						lava.OutObject.ZIndex -= Random (10);
 						SetAnimation (lava, "CREATE");
+						//System.Threading.Thread.Sleep(200);
+					}*/
+					var r = Random (100);
+					if (r < 30) {
+						CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
+					} else if (r < 60) {
+						CreateObject (createdEntityCount.ToString (), "bp_fire_salamander1", gx, gy);
+					} else {
+						CreateObject (createdEntityCount.ToString (), "bp_fire_bronze_thug1", gx, gy);
+					}
+					//CreateParticleOn ("p_lava", lava);
+					//CreateParticleAt ("p_lava", gx, gy);
 					//} else {*/
 						//CreateObject (this.createdEntityCount.ToString (), "bp_fire_entrance", gx, gy);
 						//CreateParticleAt ("p_lava", gx, gy);
@@ -204,19 +223,24 @@ namespace WizardsDuel.Game
 			get { return this.world.worldView.CellWidth; }
 		}
 
+		public void ClearUserEvent() {
+			this.events.ClearUserEvent ();
+		}
+
 		public void CreateObject(string oid, string templateId, int gx=0, int gy=0) {
 			var newEntity = GameFactory.LoadFromTemplate (templateId, oid);
 			if (newEntity != null) {
 				this.world.worldView.ObjectsLayer.AddObject (newEntity.OutObject);
 				this.world.entities.Add (oid, newEntity);
 				Move (oid, gx, gy);
-				if (oid == PLAYER_ID) {
-					this.events.AppendEvent (new UserEvent (this.events));
+				if (templateId == "bp_fire_garg1") {
+					AddLight (oid, 196, new Color(255, 102, 0, 128));
+					//this.events2.AppendEvent (new UserEvent (this.events2));
 				} else {
 					//CreateParticleOn (SPAWN_PARTICLE, newEntity);
 					//this.events.AppendEvent (new AiEvent (oid, 10));
 				}
-				this.events2.QueueObject (newEntity, createdEntityCount + 10);
+				this.events.QueueObject (newEntity, createdEntityCount + 10);
 				createdEntityCount++;
 			} else {
 				Logger.Warning ("Simulator", "CreateObject", "cannot create " + oid + " " + templateId);
@@ -246,16 +270,19 @@ namespace WizardsDuel.Game
 		}
 
 		public void DestroyObject(string oid) {
+			Logger.Debug ("Simulator", "DestroyObject", "Trying to destroy " + oid);
 			Entity res;
 			if (oid != PLAYER_ID && this.world.entities.TryGetValue (oid, out res)) {
-				this.world.worldView.ObjectsLayer.DeleteObject (res.OutObject);
+				if (res.DeathAnimation == String.Empty) {
+					this.world.worldView.ObjectsLayer.DeleteObject (res.OutObject);
+				}
 				this.world.entities.Remove (oid);
+				Logger.Debug ("Simulator", "DestroyObject", "Destroyed " + oid);
 			}
 		}
 
 		public void DoLogic() {
-			//this.events.Dispatch ();
-			this.events2.Dispatch ();
+			this.events.Dispatch ();
 		}
 
 		public string GetObjectAt(int x, int y) {
@@ -272,56 +299,57 @@ namespace WizardsDuel.Game
 		}
 
 		public bool IsUserEventInQueue() {
-			return this.events2.UserEventInQueue;
+			return this.events.UserEventInQueue;
 		}
 
 		public void Kill(Entity target) {
-			//CreateParticleAt (SPAWN_PARTICLE, target.X, target.Y);
-			var ps = new ParticleSystem ("DEATH");
-			//ps.AddParticle (new Particle ("FX01.png", new IntRect (0, 0, 1, 1)));
-			ps.TTL = 2000;
-			ps.Layer = this.world.worldView.ObjectsLayer;
-			ps.Position = new Vector2f (target.X * this.CellWidth + target.DeathRect.Left, target.Y * this.CellHeight + target.DeathRect.Top);
+			Logger.Debug ("Simulator", "Kill", "Trying to kill " + target.ID);
+			if (target.DeathAnimation == String.Empty) {
+				//CreateParticleAt (SPAWN_PARTICLE, target.X, target.Y);
+				var ps = new ParticleSystem ("DEATH");
+				//ps.AddParticle (new Particle ("FX01.png", new IntRect (0, 0, 1, 1)));
+				ps.TTL = 2000;
+				ps.Layer = this.world.worldView.ObjectsLayer;
+				ps.Position = new Vector2f (target.X * this.CellWidth + target.DeathRect.Left, target.Y * this.CellHeight + target.DeathRect.Top);
 
-			var emitter = new Emitter (ps, 0);
-			//emitter.Offset = new Vector2f (target.DeathRect.Top, target.DeathRect.Left);
-			emitter.ParticleTTL = 1000;
-			emitter.SpawnCount = 64;
-			emitter.SpawnDeltaTime = 50;
-			emitter.TTL = 90;
-			emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2);
-			emitter.AddAnimator(new GravityAnimation(new Vector2f(0f, 0.0002f)));
-			emitter.AddAnimator (new FadeAnimation (0, 0, 1000));
-			emitter.AddVariator (new GridSpawner (target.DeathRect.Width, target.DeathRect.Height, 2, 2));
-			emitter.AddVariator (new BurstSpawner (0.05f));
-			var cps = new ColorPickerSpawner ();
-			cps.AddColor (target.DeathMain);
-			cps.AddColor (target.DeathMain);
-			cps.AddColor (target.DeathSecundary);
-			emitter.AddVariator (cps);
-			ps.AddEmitter (emitter);
+				var emitter = new Emitter (ps, 0);
+				//emitter.Offset = new Vector2f (target.DeathRect.Top, target.DeathRect.Left);
+				emitter.ParticleTTL = 1000;
+				emitter.SpawnCount = 64;
+				emitter.SpawnDeltaTime = 50;
+				emitter.TTL = 90;
+				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2);
+				emitter.AddAnimator (new GravityAnimation (new Vector2f (0f, 0.0002f)));
+				emitter.AddAnimator (new FadeAnimation (0, 0, 1000));
+				emitter.AddVariator (new GridSpawner (target.DeathRect.Width, target.DeathRect.Height, 2, 2));
+				emitter.AddVariator (new BurstSpawner (0.05f));
+				var cps = new ColorPickerSpawner ();
+				cps.AddColor (target.DeathMain);
+				cps.AddColor (target.DeathMain);
+				cps.AddColor (target.DeathSecundary);
+				emitter.AddVariator (cps);
+				ps.AddEmitter (emitter);
 
-			//var ps = GameFactory.LoadParticleFromTemplate (pid, target.X * this.CellWidth, target.Y * this.CellHeight, this.world.worldView.ObjectsLayer);
-			IoManager.AddWidget (ps);
-			target.OutObject.AddAnimator (new FadeAnimation (0, 0, 400));
-			this.events.WaitFor (250);
-			this.events2.SetUserEvent (new DestroyEvent (target.ID));
-			//this.DestroyObject (target.ID);
+				//var ps = GameFactory.LoadParticleFromTemplate (pid, target.X * this.CellWidth, target.Y * this.CellHeight, this.world.worldView.ObjectsLayer);
+				IoManager.AddWidget (ps);
+				target.OutObject.AddAnimator (new FadeAnimation (0, 0, 400));
+			} else {
+				SetAnimation (target, target.DeathAnimation);
+			}
+
+			Logger.Debug ("Simulator", "Cast", "Command to to kill " + target.ID);
+			this.events.WaitAndRun(500, new DestroyEvent (target.ID));
 		}
 
 		public void LoadArea() {
-			//var tmpWorldView = world.worldView;
 			this.world = GameFactory.LoadGame(DEFAULT_DATA);
-			//this.world.worldView = tmpWorldView;
-			this.events = new EventDispatcher(this);
-			this.events.AppendEvent (new AreaAiEvent (10));
-			this.events2 = new EventManager (this);
-			this.events2.QueueObject (this.world, 15);
+			this.events = new EventManager (this);
+			this.events.QueueObject (this.world, 15);
 
 			// by default always create the player object, which is indestructible
 			if (!this.world.entities.ContainsKey(PLAYER_ID))
 				this.CreateObject (PLAYER_ID, "bp_ezekiel");
-			this.world.worldView.ReferenceObject = GetObject (PLAYER_ID).OutObject;//this.world.entities [PLAYER_ID].OutObject;
+			this.world.worldView.ReferenceObject = GetObject (PLAYER_ID).OutObject;
 			this.AddLight (PLAYER_ID, 300, new Color(254, 250, 235));
 
 			var wf = new WorldFactory ();
@@ -405,7 +433,7 @@ namespace WizardsDuel.Game
 
 		public void SetUserEvent(Event evt) {
 			//this.events.SetUserEvent (evt);
-			this.events2.SetUserEvent (evt);
+			this.events.SetUserEvent (evt);
 		}
 
 		public void Shift(string oid, int dx, int dy) {
