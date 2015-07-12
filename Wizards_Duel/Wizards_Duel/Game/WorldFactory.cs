@@ -101,6 +101,7 @@ namespace WizardsDuel.Game
 		public int X;
 		public int Y;
 		public float Probability;
+		public string[] Variations;
 	}
 
 	public class ConstructionBlock {
@@ -132,9 +133,9 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public void AddObject(string oid, int x, int y, float probability) {
+		public void AddObject(string oid, int x, int y, float probability, string[] variations) {
 			if (x < this.Width && x >= 0 && y < this.Height && y >= 0) {
-				var obj = new BlockObject { ID = oid, X = x, Y = y, Probability = probability };
+				var obj = new BlockObject { ID = oid, X = x, Y = y, Probability = probability, Variations = variations };
 				this.objects.Add (obj);
 			}
 		}
@@ -162,7 +163,8 @@ namespace WizardsDuel.Game
 				res.AddExit (exit.X, this.Height - 1 - exit.Y, exit.FlipDirection(), exit.CanBeClosed);
 			}
 			foreach (var obj in this.objects) {
-				res.AddObject(obj.ID, obj.X, this.Height - 1 - obj.Y, obj.Probability);
+				if (Array.IndexOf(obj.Variations, "F") > -1)
+					res.AddObject(obj.ID, obj.X, this.Height - 1 - obj.Y, obj.Probability, new string[]{});
 			}
 			return res;
 		}
@@ -179,7 +181,8 @@ namespace WizardsDuel.Game
 				res.AddExit (this.Width - 1 - exit.X, this.Height - 1 - exit.Y, exit.FlipMirrorDirection(), exit.CanBeClosed);
 			}
 			foreach (var obj in this.objects) {
-				res.AddObject(obj.ID, this.Width - 1 - obj.X, this.Height - 1 - obj.Y, obj.Probability);
+				if (Array.IndexOf(obj.Variations, "FM") > -1)
+					res.AddObject(obj.ID, this.Width - 1 - obj.X, this.Height - 1 - obj.Y, obj.Probability, new string[]{});
 			}
 			return res;
 		}
@@ -220,7 +223,8 @@ namespace WizardsDuel.Game
 				res.AddExit (this.Width - 1 - exit.X, exit.Y, exit.MirrorDirection(), exit.CanBeClosed);
 			}
 			foreach (var obj in this.objects) {
-				res.AddObject(obj.ID, this.Width - 1 - obj.X, obj.Y, obj.Probability);
+				if (Array.IndexOf(obj.Variations, "M") > -1)
+					res.AddObject(obj.ID, this.Width - 1 - obj.X, obj.Y, obj.Probability, new string[]{});
 			}
 			return res;
 		}
@@ -256,9 +260,11 @@ namespace WizardsDuel.Game
 				res.AddExit (nx, ny, exit.RotateDirectionCCW(), exit.CanBeClosed);
 			}
 			foreach (var obj in this.objects) {
-				var nx = obj.Y;
-				var ny = newHeight - obj.X - 1;
-				res.AddObject(obj.ID, nx, ny, obj.Probability);
+				if (Array.IndexOf(obj.Variations, "CCW") > -1) {
+					var nx = obj.Y;
+					var ny = newHeight - obj.X - 1;
+					res.AddObject (obj.ID, nx, ny, obj.Probability, new string[]{});
+				}
 			}
 			return res;
 		}
@@ -288,9 +294,11 @@ namespace WizardsDuel.Game
 				res.AddExit (nx, ny, exit.RotateDirectionCW(), exit.CanBeClosed);
 			}
 			foreach (var obj in this.objects) {
-				var nx = newWidth - obj.Y - 1;
-				var ny = obj.X;
-				res.AddObject(obj.ID, nx, ny, obj.Probability);
+				if (Array.IndexOf(obj.Variations, "CW") > -1) {
+					var nx = newWidth - obj.Y - 1;
+					var ny = obj.X;
+					res.AddObject (obj.ID, nx, ny, obj.Probability, new string[]{});
+				}
 			}
 			return res;
 		}
@@ -606,30 +614,35 @@ namespace WizardsDuel.Game
 		public BlockObject StartCell { get; set; }
 
 		public void Trim() {
-			var dx = this.maxX - this.minX + 2;
-			var dy = this.maxY - this.minY + 2;
+			var halfTrimSize = 3;
+			var trimSize = halfTrimSize * 2;
+			var dx = this.maxX - this.minX + trimSize;
+			var dy = this.maxY - this.minY + trimSize;
 			var data = new string[dx, dy];
 			var used = new bool[dx, dy];
 			for (var y = 0; y < dy; y++) {
 				for (var x = 0; x < dx; x++) {
 					try {
-						data[x, y] = this.Data [x + minX - 1, y + minY - 1];
-						used[x, y] = this.IsUsed [x + minX - 1, y + minY - 1];
+						data[x, y] = this.Data [x + minX - halfTrimSize, y + minY - halfTrimSize];
+						used[x, y] = this.IsUsed [x + minX - halfTrimSize, y + minY - halfTrimSize];
+						if (y == 0 || x == 0 || y == dy-1 || x == dx-1) {
+							data[x, y] = ".";
+						}
 					} catch (Exception ex) {
-						Logger.Debug ("TestLevel", "Trim", "invalid: " + (x + minX - 1).ToString() + " " + (y + minY - 1).ToString());
+						Logger.Debug ("TestLevel", "Trim", "invalid: " + (x + minX - halfTrimSize).ToString() + " " + (y + minY - halfTrimSize).ToString());
 						Logger.Debug ("TestLevel", "Trim", "vs: " + this.Width.ToString() + " " + this.Height.ToString());
 					}
 				}
 			}
 
 			foreach (var obj in this.Objects) {
-				obj.X = obj.X - minX + 1;
-				obj.Y = obj.Y - minY + 1;
+				obj.X = obj.X - minX + halfTrimSize;
+				obj.Y = obj.Y - minY + halfTrimSize;
 			}
-			this.StartCell.X = this.StartCell.X - minX + 1;
-			this.StartCell.Y = this.StartCell.Y - minY + 1;
-			this.EndCell.X = this.EndCell.X - minX + 1;
-			this.EndCell.Y = this.EndCell.Y - minY + 1;
+			this.StartCell.X = this.StartCell.X - minX + halfTrimSize;
+			this.StartCell.Y = this.StartCell.Y - minY + halfTrimSize;
+			this.EndCell.X = this.EndCell.X - minX + halfTrimSize;
+			this.EndCell.Y = this.EndCell.Y - minY + halfTrimSize;
 
 			this.Data = data;
 			this.IsUsed = used;
@@ -708,7 +721,8 @@ namespace WizardsDuel.Game
 						XmlUtilities.GetString(children[i], "ref"),
 						XmlUtilities.GetInt(children[i], "x"),
 						XmlUtilities.GetInt(children[i], "y"),
-						XmlUtilities.GetFloat(children[i], "probability")
+						XmlUtilities.GetFloat(children[i], "probability"),
+						XmlUtilities.GetStringArray(children[i], "variations")
 					);
 					break;
 

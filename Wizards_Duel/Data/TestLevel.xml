@@ -52,7 +52,7 @@
 		#...#
 		##.##
 		<exit x="2" y="4" direction="S"/>
-		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5"/>
+		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5" variations="M"/>
 	</block>
 	<block id="b_room2" width="5" height="5" occurs="1" variations="F,M,FM">
 		#####
@@ -62,7 +62,7 @@
 		##.##
 		<exit x="2" y="4" direction="S" canBeClosed="true"/>
 		<exit x="4" y="2" direction="E" canBeClosed="true"/>
-		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5"/>
+		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5" variations="M"/>
 	</block>
 	<block id="b_room3" width="5" height="5" occurs="1" variations="F,M,FM,CW,CCW">
 		#####
@@ -72,7 +72,7 @@
 		##.##
 		<exit x="2" y="4" direction="S" canBeClosed="true"/>
 		<exit x="4" y="2" direction="E"/>
-		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5"/>
+		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5" variations="M"/>
 	</block>
 	<block id="b_room4" width="5" height="5" occurs="1" variations="F,M,FM,CW,CCW">
 		#....
@@ -103,6 +103,7 @@
 		#####
 		<exit x="0" y="2" direction="E"/>
 		<exit x="4" y="2" direction="W"/>
+		<object ref="bp_fire_garg1" x="2" y="0" probability="0.5"/>
 	</block>
 	<block id="b_room_huge" width="9" height="5" occurs="1">
 		.........
@@ -132,7 +133,7 @@
 		<exit x="1" y="2" direction="S" canBeClosed="true"/>
 		<exit x="0" y="1" direction="W" canBeClosed="true"/>
 		<exit x="2" y="1" direction="E" canBeClosed="true"/>
-		<object ref="bp_fire_garg1" x="1" y="0" probability="0.5"/>
+		<object ref="bp_fire_garg1" x="1" y="0" probability="0.5" variations="M"/>
 	</block>
 	<block id="b_corridor" width="3" height="3" occurs="1" variations="CW">
 		###
@@ -140,6 +141,7 @@
 		###
 		<exit x="0" y="1" direction="W" canBeClosed="true"/>
 		<exit x="2" y="1" direction="E" canBeClosed="true"/>
+		<object ref="bp_fire_garg1" x="1" y="0" probability="0.2"/>
 	</block>
 	<block id="b_corridor_snake" width="3" height="3" occurs="1" variations="CW,CCW,F">
 		...
@@ -154,7 +156,7 @@
 		...
 		<exit x="0" y="1" direction="W" canBeClosed="true"/>
 		<exit x="2" y="1" direction="E" canBeClosed="true"/>
-		<object ref="bp_fire_garg1" x="1" y="1" probability="0.5"/>
+		<object ref="bp_fire_garg1" x="1" y="1" probability="0.5" variations="M"/>
 	</block>
 	<!--block id="b_bridge" width="3" height="3" occurs="1" variations="CW">
 		OOO
@@ -170,6 +172,7 @@
 		###
 		<exit x="0" y="2" direction="W" canBeClosed="true"/>
 		<exit x="2" y="1" direction="E" canBeClosed="true"/>
+		<object ref="bp_fire_garg1" x="1" y="0" probability="0.2" variations="CW"/>
 	</block>
 	<block id="b_scorridor2" width="3" height="4" occurs="1" variations="CW">
 		###
@@ -178,6 +181,7 @@
 		###
 		<exit x="0" y="1" direction="W" canBeClosed="true"/>
 		<exit x="2" y="2" direction="E" canBeClosed="true"/>
+		<object ref="bp_fire_garg1" x="1" y="0" probability="0.2" variations="CW"/>
 	</block>
 	<block id="b_L" width="3" height="3" occurs="1" variations="F,M,FM">
 		#.#

@@ -215,7 +215,7 @@ namespace WizardsDuel.Game
 		}
 
 		public bool IsValid(int x, int y) {
-			return (x >= 0 && x < this.GridWidth-1 && y >= 0 && y < this.GridHeight-1);
+			return (x >= 0 && x < this.GridWidth && y >= 0 && y < this.GridHeight);
 		}
 
 		public bool IsWalkable(int x, int y) {
@@ -228,8 +228,8 @@ namespace WizardsDuel.Game
 				this.GridHeight = dungeon.Length;
 				this.GridWidth = dungeon[0].Length;
 				this.map = new Tile[this.GridHeight, this.GridWidth];
-				for (int y = 0; y < this.GridHeight-1; y++) {
-					for (int x = 0; x < this.GridWidth-1; x++) {
+				for (int y = 0; y < this.GridHeight; y++) {
+					for (int x = 0; x < this.GridWidth; x++) {
 						var tile = new Tile();
 						tile.InLos = false;
 						tile.IsExplored = false;
@@ -253,15 +253,21 @@ namespace WizardsDuel.Game
 				this.GridWidth = dungeon.GetLength(0);
 				this.map = new Tile[this.GridHeight, this.GridWidth];
 				var linearDungeon = new string[this.GridHeight];
-				for (int y = 0; y < this.GridHeight-1; y++) {
-					for (int x = 0; x < this.GridWidth-1; x++) {
+				for (int y = 0; y < this.GridHeight; y++) {
+					for (int x = 0; x < this.GridWidth; x++) {
 						var tile = new Tile();
 						tile.InLos = false;
 						tile.IsExplored = false;
-						if (this.tiles.TryGetValue(dungeon[x,y], out tile.Template) == false) {
-							tile.Template = this.tiles[DEFAULT_TILE_ID];
+						try {
+							if (this.tiles.TryGetValue(dungeon[x,y], out tile.Template) == false) {
+								tile.Template = this.tiles[DEFAULT_TILE_ID];
+							}
+							linearDungeon[y] += dungeon[x,y];
 						}
-						linearDungeon[y] += dungeon[x,y];
+						catch (Exception ex) {
+							tile.Template = this.tiles[DEFAULT_TILE_ID];
+							linearDungeon[y] += ".";
+						}
 						this.SetTile(x, y, tile);
 					}
 				}
@@ -284,6 +290,7 @@ namespace WizardsDuel.Game
 
 		#region EventObject implementation
 		public void Run (Simulator sim, EventManager ed) {
+			return;
 			//5-5 7-7
 			var MAX_ENTITIES = 10;
 			var spawn = sim.Random (100);
