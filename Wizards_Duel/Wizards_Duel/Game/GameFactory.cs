@@ -68,6 +68,16 @@ namespace WizardsDuel.Game
 				res.Faction = XmlUtilities.GetString(properties, "faction");
 				res.Static = XmlUtilities.GetBool(properties, "static");
 				res.Dressing = XmlUtilities.GetBool(properties, "dressing");
+				var ai = XmlUtilities.GetString(properties, "ai");
+				switch (ai) {
+				case ArtificialIntelligence.LAVA_EMITTER:
+					res.AI = new LavaEmitterAI();
+					break;
+				case ArtificialIntelligence.LAVA:
+					res.AI = new LavaAI();
+					break;
+				default: break;
+				}
 
 				var variables = template.SelectNodes("./var");
 				for (int v = 0; v < variables.Count; v++) {
@@ -96,6 +106,8 @@ namespace WizardsDuel.Game
 						XmlUtilities.GetInt(outTemplate, "defaultH")
 					)
 				);
+				res.OutObject.LightColor = XmlUtilities.GetColor(outTemplate, "lightColor", Color.White);
+				res.OutObject.LightRadius = XmlUtilities.GetInt(outTemplate, "lightRadius");
 				res.OutObject.ZIndex = XmlUtilities.GetInt(outTemplate, "zIndex");
 
 				var animations = outTemplate.SelectNodes("./animation");

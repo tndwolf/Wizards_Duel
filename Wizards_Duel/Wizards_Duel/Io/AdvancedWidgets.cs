@@ -211,6 +211,10 @@ namespace WizardsDuel.Io
 
 		public bool IsInIdle { get; set; }
 
+		public float LightRadius { get; set; }
+
+		public Color LightColor { get; set; }
+
 		override public void Move(int dx, int dy) {
 			this.sprite.Position = new Vector2f(this.sprite.Position.X + dx, this.sprite.Position.Y + dy);
 		}
@@ -244,7 +248,7 @@ namespace WizardsDuel.Io
 			if (this.animations.TryGetValue (id, out anim) == true) {
 				this.animators.RemoveAll (x => x is SpriteAnimation);
 				anim.SetAnimation (this);
-				this.IsInIdle = (id == OutObject.IDLE_ANIMATION);
+				this.IsInIdle = (id == this.IdleAnimation);
 			}
 		}
 

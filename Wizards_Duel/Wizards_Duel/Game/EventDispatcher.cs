@@ -61,6 +61,7 @@ namespace WizardsDuel.Game
 		bool eventQueueLocked = false;
 		Simulator simulator;
 		public Event userEvent;
+		public long userWaitUntil = 0;
 
 		public EventManager (Simulator sim) {
 			this.simulator = sim;
@@ -96,7 +97,6 @@ namespace WizardsDuel.Game
 			// then run actors
 			if (this.actorQueue.Count > 0) {
 				var actor = this.actorQueue [0];
-				//Logger.Debug ("EventManager", "Dispatch", "Object to process " + actor.GetHashCode());
 				/*if (actor.HasStarted == false) {
 					Logger.Debug ("EventManager", "Dispatch", "Running object " + actor.GetHashCode ());
 					actor.Run (this.simulator, this);
@@ -110,15 +110,22 @@ namespace WizardsDuel.Game
 					//this.Dispatch ();
 					//return;
 				}*/
-				if (actor.IsWaiting) {
+				if (actor.IsWaiting /*|| actor.HasEnded == false*/) {
 					return;
 				//} else if (actor.HasEnded == false) {
 				//	actor.Run (this.simulator, this);
 				} else {
+					//Logger.Debug ("EventManager", "Dispatch", "Object to process " + actor.GetHashCode() + " at initiative " + this.Initiative.ToString());
+					this.Initiative = actor.Initiative;
 					actor.Run (this.simulator, this);
 					this.Replan (actor);
 				}
 			}
+		}
+
+		public int Initiative {
+			get;
+			private set;
 		}
 
 		public void QueueObject(EventObject obj, int initiative) {

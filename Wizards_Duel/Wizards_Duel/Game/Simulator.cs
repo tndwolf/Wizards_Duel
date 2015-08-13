@@ -32,7 +32,7 @@ namespace WizardsDuel.Game
 		internal World world = new World();
 
 		public const string BLOOD_PARTICLE = "P_BLEED";
-		public const string DEFAULT_DATA = "Data/Test.xml";
+		public const string DEFAULT_DATA = "Data/Test_priv.xml";
 		public const string DEFAULT_LEVEL = "Data/TestLevel.xml";
 		public const string HEALTH_VARIABLE = "HEALTH";
 		public const string PLAYER_ID = "Player";
@@ -183,26 +183,26 @@ namespace WizardsDuel.Game
 						var lava = GetObject (id);
 						SetAnimation (lava, "CREATE");*/
 					//System.Threading.Thread.Sleep(200);
-					/*for (int i = 0; i < 4; i++) {
-						var id = "lava_" + createdEntityCount.ToString ();
-						CreateObject (id, "bp_fire_lava", gx, gy);
-						var lava = GetObject (id);
-						lava.OutObject.X += (Random (6) - 3)*6;
-						lava.OutObject.Y += (Random (6) - 3)*6;
-						lava.OutObject.ZIndex -= Random (10);
+					//for (int i = 0; i < 4; i++) {
+						//var id = "lava_" + createdEntityCount.ToString ();
+						//CreateObject (id, "bp_fire_lavax2", gx, gy);
+						var lava = GetObject (CreateObject ("bp_fire_lavax2", gx, gy));
+						//lava.OutObject.X += (Random (6) - 3)*6;
+						//lava.OutObject.Y += (Random (6) - 3)*6;
+						//lava.OutObject.ZIndex -= Random (10);
 						SetAnimation (lava, "CREATE");
 						//System.Threading.Thread.Sleep(200);
-					}*/
-					var r = Random (100);
+					//}
+					/*var r = Random (100);
 					if (r < 30) {
 						CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
 					} else if (r < 60) {
 						CreateObject (createdEntityCount.ToString (), "bp_fire_salamander1", gx, gy);
 					} else {
 						CreateObject (createdEntityCount.ToString (), "bp_fire_bronze_thug1", gx, gy);
-					}
-					//CreateParticleOn ("p_lava", lava);
-					//CreateParticleAt ("p_lava", gx, gy);
+					}*/
+					//CreateParticleOn ("p_lavax2", lava);
+					//CreateParticleAt ("p_lavax2", gx, gy);
 					//} else {*/
 						//CreateObject (this.createdEntityCount.ToString (), "bp_fire_entrance", gx, gy);
 						//CreateParticleAt ("p_lava", gx, gy);
@@ -227,21 +227,27 @@ namespace WizardsDuel.Game
 			this.events.ClearUserEvent ();
 		}
 
+		public string CreateObject(string templateId, int gx=0, int gy=0) {
+			var id = createdEntityCount.ToString ();
+			CreateObject (id, templateId, gx, gy);
+			return id;
+		}
+
 		public void CreateObject(string oid, string templateId, int gx=0, int gy=0) {
 			var newEntity = GameFactory.LoadFromTemplate (templateId, oid);
 			if (newEntity != null) {
 				this.world.worldView.ObjectsLayer.AddObject (newEntity.OutObject);
 				this.world.entities.Add (oid, newEntity);
 				Move (oid, gx, gy);
-				if (templateId == "bp_fire_garg1") {
-					AddLight (oid, 196, new Color(255, 102, 0, 128));
-					//this.events2.AppendEvent (new UserEvent (this.events2));
+				if (newEntity.OutObject.LightRadius > 1) {
+					AddLight (oid, newEntity.OutObject.LightRadius, newEntity.OutObject.LightColor);
 				} else {
 					//CreateParticleOn (SPAWN_PARTICLE, newEntity);
 					//this.events.AppendEvent (new AiEvent (oid, 10));
 				}
-				this.events.QueueObject (newEntity, createdEntityCount + 10);
+				this.events.QueueObject (newEntity, InitiativeCount/*createdEntityCount + 10*/);
 				createdEntityCount++;
+				newEntity.AI.onCreate ();
 			} else {
 				Logger.Warning ("Simulator", "CreateObject", "cannot create " + oid + " " + templateId);
 			}
@@ -273,9 +279,9 @@ namespace WizardsDuel.Game
 			Logger.Debug ("Simulator", "DestroyObject", "Trying to destroy " + oid);
 			Entity res;
 			if (oid != PLAYER_ID && this.world.entities.TryGetValue (oid, out res)) {
-				if (res.DeathAnimation == String.Empty) {
+				//if (res.DeathAnimation == String.Empty) {
 					this.world.worldView.ObjectsLayer.DeleteObject (res.OutObject);
-				}
+				//}
 				this.world.entities.Remove (oid);
 				Logger.Debug ("Simulator", "DestroyObject", "Destroyed " + oid);
 			}
@@ -296,6 +302,10 @@ namespace WizardsDuel.Game
 			} else {
 				return null;
 			}
+		}
+
+		public int InitiativeCount {
+			get { return events.Initiative; }
 		}
 
 		public bool IsUserEventInQueue() {
@@ -347,8 +357,16 @@ namespace WizardsDuel.Game
 			this.events.QueueObject (this.world, 15);
 
 			// by default always create the player object, which is indestructible
-			if (!this.world.entities.ContainsKey(PLAYER_ID))
-				this.CreateObject (PLAYER_ID, "bp_ezekiel");
+			if (!this.world.entities.ContainsKey (PLAYER_ID)) {
+				if (Random (100) < 50) {
+					this.CreateObject (PLAYER_ID, "bp_rake");
+				} else {
+					this.CreateObject (PLAYER_ID, "bp_exekiel");
+				}
+			}
+			var playerObject = GetObject (PLAYER_ID);
+			playerObject.HasStarted = false;
+			playerObject.HasEnded = true;
 			this.world.worldView.ReferenceObject = GetObject (PLAYER_ID).OutObject;
 			this.AddLight (PLAYER_ID, 300, new Color(254, 250, 235));
 

@@ -45,7 +45,8 @@ namespace WizardsDuel
 				Logger.Blacklist("CanShift");
 				Logger.Blacklist("WorldFactory");
 				Logger.Blacklist("TranslateAnimation");
-				Logger.Blacklist("EventManager");
+				Logger.Blacklist("SetUserEvent");
+				//Logger.Blacklist("EventManager");
 				IoManager.Initialize ("Wizard's Duel", 1280, 720);
 				//Logger.Initialize (LogLevel.ALL, logPrintToScreen);
 				//Logger.SetOutFile (logPrefix, logUseTimestamp);

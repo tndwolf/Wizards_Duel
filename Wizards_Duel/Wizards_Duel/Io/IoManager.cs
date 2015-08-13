@@ -377,6 +377,7 @@ namespace WizardsDuel.Io
 				try {
 					var path = IoManager.GetAssetPath(fileName);
 					res = new Sound(new SoundBuffer(path));
+					res.Volume = 5;
 					IoManager.sounds.Add(fileName, res);
 				}
 				catch (Exception ex) {
