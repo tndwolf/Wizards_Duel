@@ -46,7 +46,13 @@ namespace WizardsDuel
 				Logger.Blacklist("WorldFactory");
 				Logger.Blacklist("TranslateAnimation");
 				Logger.Blacklist("SetUserEvent");
-				//Logger.Blacklist("EventManager");
+				Logger.Blacklist("Simulator");
+				//Logger.Blacklist("Entity");
+				Logger.Blacklist("EventManager");
+				Logger.Blacklist("SetUserEvent");
+				Logger.Blacklist("OutObject");
+				Logger.Blacklist("Main");
+				Logger.Blacklist("IO");
 				IoManager.Initialize ("Wizard's Duel", 1280, 720);
 				//Logger.Initialize (LogLevel.ALL, logPrintToScreen);
 				//Logger.SetOutFile (logPrefix, logUseTimestamp);
@@ -61,6 +67,7 @@ namespace WizardsDuel
 			simulator.Initialize (out tm);
 			//tm.ShowGuides = true;
 
+			var changeTo = "bp_exekiel";
 			IoManager.PlayMusic ("test1");
 			while (true) {
 				var inputs = IoManager.GetInputs ();
@@ -88,7 +95,19 @@ namespace WizardsDuel
 					//Console.WriteLine (inputs.Command.ToString ());
 				}
 
+				//Logger.Debug ("Main", "main", "Current Unicode " + inputs.Unicode);
 				switch (inputs.Unicode) {
+				case "0":
+					Logger.Debug ("Main", "main", "Changing player");
+					var player = simulator.GetPlayer ();
+					changeTo = (changeTo == "bp_rake") ? "bp_exekiel" : "bp_rake";
+					var tmp = simulator.CreateObject ("tmp", changeTo, player.X, player.Y);
+					var oo = player.OutObject;
+					player.OutObject = tmp.OutObject;
+					tmp.OutObject = oo;
+					simulator.world.worldView.ReferenceObject = player.OutObject;
+					simulator.DestroyObject ("tmp");
+					break;
 				case "1":
 					Logger.Debug ("Main", "main", "Set next loop to 1");
 					IoManager.SetNextMusicLoop ("test1");

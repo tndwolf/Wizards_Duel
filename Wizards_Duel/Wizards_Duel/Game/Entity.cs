@@ -93,58 +93,36 @@ namespace WizardsDuel.Game
 
 		#region EventObject implementation
 		public void Run (Simulator sim, EventManager ed) {
-			if (this.Dressing || this.Static) {
-				this.AI.onRound ();
-				this.HasStarted = true;
-				this.HasEnded = true;
-			} else if (this.ID == Simulator.PLAYER_ID) {
-				//Logger.Debug ("Entity", "Run", "Running PLAYER event");
-				if (ed.RunUserEvent () == true) {
-					Logger.Debug ("Entity", "Run", "Running PLAYER event at initiative " + sim.InitiativeCount.ToString());
-					this.HasStarted = true;
-					this.HasEnded = true;
-				} else {
-					Logger.Debug ("Entity", "Run", "NOT Running PLAYER event at initiative " + sim.InitiativeCount.ToString());
-					this.HasStarted = false;
-					this.HasEnded = false;
-				}
+			this.AI.onRound ();
+			if (this.ID == Simulator.PLAYER_ID && ed.WaitingForUser == true) {
+				return;
 			} else {
-				//Logger.Debug ("Entity", "Run", "Running NPC event");
-				/*var player = sim.GetObject (Simulator.PLAYER_ID);
-				var dx = Math.Sign(player.X - this.X);
-				var dy = Math.Sign(player.Y - this.Y);
-				sim.CanShift(this.ID, dx, dy, true);*/
-				this.AI.onRound ();
-
-				this.HasStarted = true;
+				Logger.Debug ("Entity", "Run", "Ran " + this.ID + " at initiative " + sim.InitiativeCount.ToString());
 				this.HasEnded = true;
+				this.Initiative += Simulator.ROUND_LENGTH;
 			}
+			/*if (sim.world.InLos (this.X, this.Y)) {
+					this.OutObject.Alpha = 255;
+				} else {
+					this.OutObject.Alpha = 0;
+				}*/
 		}
 
 		bool hasEnded = false;
 		public bool HasEnded {
-			get { return this.hasEnded && this.OutObject.IsInIdle; }
-			set { this.hasEnded = value; }
-		}
-
-		public bool HasStarted { get; set; }
-
-		public int Initiative { get; set; }
-
-		public bool IsWaiting { 
 			get { 
-				if (this.ID == Simulator.PLAYER_ID) {
-					return !Simulator.Instance.IsUserEventInQueue ();
+				if (this.Dressing == true || this.Static == true) {
+					return true;
 				} else {
-					return false;
+					return this.hasEnded; //&& this.OutObject.IsInIdle;
 				}
+			}
+			set { 
+				this.hasEnded = value;
 			}
 		}
 
-		public int UpdateInitiative () {
-			this.Initiative += 10;
-			return this.Initiative;
-		}
+		public int Initiative { get; set; }
 
 		public int CompareTo (object obj) {
 			try {

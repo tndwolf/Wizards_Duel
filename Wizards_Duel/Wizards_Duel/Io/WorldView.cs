@@ -184,6 +184,10 @@ namespace WizardsDuel.Io
 			get { try { return (LightLayer)this.layers [this.lightsLayer]; } catch { return null; } }
 		}
 
+		public GridLayer GridLayer {
+			get { try { return (GridLayer)this.layers [this.gridLayer]; } catch { return null; } }
+		}
+
 		public ObjectsLayer ObjectsLayer {
 			get { try { return (ObjectsLayer)this.layers [this.objectsLayer]; } catch { return null; } }
 		}

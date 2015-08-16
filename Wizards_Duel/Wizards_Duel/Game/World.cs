@@ -66,6 +66,76 @@ namespace WizardsDuel.Game
 			set { value.Parent = this; this._AI = value; }
 		}
 
+		public void CalculateFoV(int cx, int cy, int sightRadius, int updateRadius = 10) {
+			/*int x0 = cx - updateRadius;
+			int x1 = cx + updateRadius - 1;
+			for (int y = cy - updateRadius; y < cy + updateRadius; y++) {
+				if (IsValid(x0,y)) CalculateLoS(cx, cy, x0, y, sightRadius);
+				if (IsValid(x1,y)) CalculateLoS(cx, cy, x1, y, sightRadius);
+			}
+			int y0 = cy - updateRadius;
+			int y1 = cy + updateRadius - 1;
+			for (int x = cx - updateRadius; x < cx + updateRadius; x++) {
+				if (IsValid(x,y0)) CalculateLoS(cx, cy, x, y0, sightRadius);
+				if (IsValid(x,y1)) CalculateLoS(cx, cy, x, y1, sightRadius);
+			}*/
+
+			/*for (int y = cy - updateRadius; y < cy + updateRadius; y++) {
+				for (int x = cx - updateRadius; x < cx + updateRadius; x++) {
+					if (IsValid(x,y)) CalculateLoS(cx, cy, x, y, sightRadius);
+				}
+			}*/
+		}
+
+		public void CalculateLoS(int x0, int y0, int x1, int y1, int maxRadius = 10) {
+			var dx = x0 - x1;
+			var dy = y0 - y1;
+			var error = 0.0;
+			var de = (dx == 0) ? 100000.0 : Math.Abs(dy / dx);
+			dy = Math.Sign(dy); // delta no longer useful in itself, update with +1/-1 for movement
+			int y = y0; 
+			Tile cell;
+			bool isBlocking = false;
+			int calculatedCount = 0;
+			if (x0 <= x1) {
+				for (int x = x0; x < x1; x++) {
+					cell = this.GetTile(x, y);
+					cell.InLos = !isBlocking;
+					this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
+					if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
+					if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
+					error += de;
+					while (error >= 0.5) {
+						y += dy;
+						error -= 1.0;
+						cell = this.GetTile(x, y);
+						cell.InLos = !isBlocking;
+						this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
+						if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
+						if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
+					}
+				}
+			} else {
+				for (int x = x0; x > x1; x--) {
+					cell = this.GetTile(x, y);
+					cell.InLos = !isBlocking;
+					this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
+					if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
+					if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
+					error += de;
+					while (error >= 0.5) {
+						y += dy;
+						error -= 1.0;
+						cell = this.GetTile(x, y);
+						cell.InLos = !isBlocking;
+						this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
+						if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
+						if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
+					}
+				}
+			}
+		}
+
 		public Vector2i EndCell { get; set; }
 
 		/// <summary>
@@ -109,7 +179,12 @@ namespace WizardsDuel.Game
 		}
 
 		public Tile GetTile(int x, int y) {
-			return this.map [y, x];
+			try {
+				return this.map [y, x];
+			} catch {
+				Logger.Debug ("World", "GetTile", "Out of bounds " + x.ToString() + "," + y.ToString());
+				return null;
+			}
 		}
 
 		public int GridHeight { get; set; }
@@ -204,20 +279,12 @@ namespace WizardsDuel.Game
 			//5-5 7-7
 			this.AI.onRound();
 			this.HasEnded = true;
+			this.Initiative += Simulator.ROUND_LENGTH;
 		}
 
 		public bool HasEnded { get; set; }
 
-		public bool HasStarted { get; set; }
-
 		public int Initiative { get; set; }
-
-		public bool IsWaiting { get; protected set; }
-
-		public int UpdateInitiative () {
-			this.Initiative += 10;
-			return this.Initiative;
-		}
 
 		public int CompareTo (object obj) {
 			try {

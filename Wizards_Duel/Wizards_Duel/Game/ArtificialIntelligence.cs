@@ -78,11 +78,49 @@ namespace WizardsDuel.Game
 		}
 	}
 
+	public class MeleeAI: ArtificialIntelligence {
+		override public void onRound () {
+			var player = Simulator.Instance.GetPlayer();
+			var dx = Math.Sign(player.X - this.Parent.X);
+			var dy = Math.Sign(player.Y - this.Parent.Y);
+			var ex = this.Parent.X + dx;
+			var ey = this.Parent.Y + dy;
+			var world = Simulator.Instance.world;
+			if (world.IsWalkable (ex, ey)) {
+				Simulator.Instance.Shift (this.Parent.ID, dx, dy);
+			} else if (dx == 0) {
+				ex -= 1;
+				if (world.IsWalkable (ex, ey)) {
+					Simulator.Instance.Shift (this.Parent.ID, dx-1, dy);
+					return;
+				} else if (world.IsWalkable (ex + 2, ey)) {
+					Simulator.Instance.Shift (this.Parent.ID, dx+1, dy);
+					return;
+				}
+			} else if (dy == 0) {
+				ey -= 1;
+				if (world.IsWalkable (ex, ey)) {
+					Simulator.Instance.Shift (this.Parent.ID, dx, dy-1);
+					return;
+				} else if (world.IsWalkable (ex, ey + 2)) {
+					Simulator.Instance.Shift (this.Parent.ID, dx, dy+1);
+					return;
+				}
+			} else {
+				dx = Simulator.Instance.Random(3)-1;
+				dy = Simulator.Instance.Random(3)-1;
+				Simulator.Instance.CanShift(this.Parent.ID, dx, dy, true);
+			}
+		}
+	}
+
 	public class LavaAI: ArtificialIntelligence {
-		public static int HARDEN_TIME = 100;
+		public static int HARDEN_TIME = Simulator.ROUND_LENGTH * 3;
 		public static int MAX_GENERATIONS = 3;
 		public static int MAX_SPAWN_COUNT = 3;
 
+		private bool firstRound = true;
+		private bool hasSpawned = false;
 		private int initiative = 0;
 		private int hardenInitiative = 0;
 		private int oldInitiative = 0;
@@ -109,21 +147,17 @@ namespace WizardsDuel.Game
 		override public void onCreate() {
 			var sim = Simulator.Instance;
 			var objects = sim.world.GetObjectsAt (Parent.X, Parent.Y);
-			Logger.Debug ("LavaAI", "onCreate", "Deleting existing items");
+			//Logger.Debug ("LavaAI", "onCreate", "Deleting existing items");
 			foreach (var o in objects) {
 				if (o.ID == this.Parent.ID) {
 					// skip myself
 					continue;
 				}
 				if (o.TemplateID == Parent.TemplateID) {
-					// Found lava already present, refresh and delete myself
-					Logger.Debug ("LavaAI", "onCreate", "Deleting " + o.TemplateID);
-					if (o.OutObject.IdleAnimation == "BASALT") {
-						o.OutObject.SetAnimation ("OPEN");
-						o.OutObject.IdleAnimation = "ACTIVE";
-					}
-					o.Initiative = sim.InitiativeCount;
-					sim.DestroyObject(this.Parent.ID);
+					// Found lava already present, destroy old patch and update
+					//Logger.Debug ("LavaAI", "onCreate", "Deleting " + o.TemplateID);
+					this.Parent.OutObject.SetAnimation ("IDLE");
+					sim.DestroyObject(o.ID);
 				} else {
 					// other objects, hurt them on creation!
 					Logger.Debug ("LavaAI", "onCreate", "Deleting " + o.TemplateID);
@@ -136,29 +170,36 @@ namespace WizardsDuel.Game
 			this.initiative += Parent.Initiative - this.oldInitiative;
 			this.oldInitiative = Parent.Initiative;
 			//Logger.Info ("LavaEmitterAI", "onRound", "Current initiative " + this.startInitiative.ToString() + " parent " + this.Parent.GetHashCode().ToString());
-			if (this.status == 0 && this.Generation > 0 && this.Generation < MAX_GENERATIONS) {
-				//Spawn ();
+			if (this.status == 0 && this.Generation > 0 && this.Generation < MAX_GENERATIONS && this.firstRound == false && this.hasSpawned == false) {
+				Spawn ();
 			}
 			if (this.initiative > this.hardenInitiative && this.status == 0) {
 				this.status = 1;
+				Parent.OutObject.ZIndex -= 1;
 				Parent.OutObject.IdleAnimation = "BASALT";
 				Parent.OutObject.SetAnimation ("SOLIDIFY");
+				Parent.Static = true;
+				Parent.AI = new ArtificialIntelligence ();
 			}
+			this.firstRound = false;
 		}
 
 		private void Spawn() {
+			this.hasSpawned = true;
 			var sim = Simulator.Instance;
 			for (int i = 0; i < MAX_SPAWN_COUNT; i++) {
 				var x = Parent.X + sim.Random (3) - 1;
 				var y = Parent.Y + sim.Random (3) - 1;
 				//var alreadyRefreshed = false;
-				if (sim.world.IsWalkable (x, y)) {
+				var objects = sim.world.GetObjectsAt (x, y);
+				var containsLava = objects.Exists(o => o.TemplateID == this.Parent.TemplateID && o.OutObject.IdleAnimation == "IDLE");
+				if (sim.world.IsWalkable (x, y) && containsLava == false) {
 					var lava = sim.GetObject (sim.CreateObject (Parent.TemplateID, x, y));
 					if (lava != null) {
-						var ai = lava.AI as LavaAI;//new LavaAI ();
-						ai.Initiative = this.oldInitiative + 10;
+						var ai = lava.AI as LavaAI;
+						ai.Initiative = this.oldInitiative + Simulator.ROUND_LENGTH;
 						ai.Generation = this.Generation + 1;
-						//lava.AI = ai;
+						//lava.OutObject.Color = new SFML.Graphics.Color (255, (byte)(255 - ai.Generation * 50), 255);
 						sim.SetAnimation (lava, "CREATE");
 					}
 				}
@@ -167,15 +208,14 @@ namespace WizardsDuel.Game
 	}
 
 	public class LavaEmitterAI: ArtificialIntelligence {
-		public static int EMIT_START = 160;
-		public static int EMIT_END = 200;
+		public static int EMIT_START = Simulator.ROUND_LENGTH * 6;
+		public static int EMIT_END = Simulator.ROUND_LENGTH * 9;
 
 		private int initiative = 0;
 		private int emitInitiative = EMIT_START;
 		private int oldInitiative = 0;
 		private int stopInitiative = EMIT_END;
 		private int status = 0; // 0 idle, 1 active
-		private bool alreadySpawned = false;
 
 		public int Initiative {
 			set {
@@ -189,7 +229,6 @@ namespace WizardsDuel.Game
 		override public void onRound () {
 			this.initiative += Parent.Initiative - this.oldInitiative;
 			this.oldInitiative = Parent.Initiative;
-			//Logger.Debug ("LavaEmitterAI", "onRound", "Current initiative " + this.initiative.ToString() + " parent " + this.Parent.GetHashCode().ToString());
 			if (this.initiative > stopInitiative && this.status == 1) {
 				//Logger.Debug ("LavaEmitterAI", "onRound", "Closing");
 				this.status = 0;
@@ -202,17 +241,20 @@ namespace WizardsDuel.Game
 				this.status = 1;
 				Parent.OutObject.SetAnimation ("OPEN");
 				Parent.OutObject.IdleAnimation = "ACTIVE";
-				if (alreadySpawned == false) {
-					var lava = sim.GetObject (sim.CreateObject ("bp_fire_lavax2", Parent.X, Parent.Y + 1));
-					var ai = lava.AI as LavaAI;//new LavaAI ();
-					ai.Initiative = this.oldInitiative + 10;
-					ai.Generation = 1;
-					//lava.AI = ai;
-					sim.SetAnimation (lava, "CREATE");
-					alreadySpawned = true;
-				}
+				var lava = sim.GetObject (sim.CreateObject ("bp_fire_lavax2", Parent.X, Parent.Y + 1));
+				var ai = lava.AI as LavaAI;//new LavaAI ();
+				ai.Initiative = this.oldInitiative + Simulator.ROUND_LENGTH;
+				ai.Generation = 1;
+				sim.SetAnimation (lava, "CREATE");
 			}
 		}
 	}
+
+	public class UserAI: ArtificialIntelligence {
+		override public void onRound () {
+			Simulator.Instance.events.WaitingForUser = !Simulator.Instance.events.RunUserEvent ();
+		}
+	}
+
 }
 

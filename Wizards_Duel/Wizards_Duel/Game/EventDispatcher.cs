@@ -27,32 +27,22 @@ namespace WizardsDuel.Game
 			set;
 		}
 
-		bool HasStarted {
-			get;
-			set;
-		}
-
+		/// <summary>
+		/// Gets or sets the current initiative.
+		/// </summary>
+		/// <value>The initiative.</value>
 		int Initiative {
 			get;
 			set;
 		}
 
-		bool IsWaiting {
-			get;
-		}
-
 		/// <summary>
-		/// Returns true if the action has finished, false otherwise.
+		/// Runs the event. At the end the initiative count must always be updated
 		/// </summary>
 		/// <param name="sim">Sim.</param>
 		/// <param name="ed">Ed.</param>
 		void Run (Simulator sim, EventManager ed);
 
-		/// <summary>
-		/// Returns the next initiative count after ending the current action.
-		/// If less than zero the object can be deleted
-		/// </summary>
-		int UpdateInitiative ();
 	}
 
 	public class EventManager {
@@ -76,7 +66,7 @@ namespace WizardsDuel.Game
 		}
 
 		public void ClearUserEvent() {
-			Logger.Debug ("EventManager", "ClearUserEvent", "Clearing user events");
+			//Logger.Debug ("EventManager", "ClearUserEvent", "Clearing user events");
 			this.userEvent = null;
 		}
 
@@ -97,43 +87,44 @@ namespace WizardsDuel.Game
 			// then run actors
 			if (this.actorQueue.Count > 0) {
 				var actor = this.actorQueue [0];
-				/*if (actor.HasStarted == false) {
-					Logger.Debug ("EventManager", "Dispatch", "Running object " + actor.GetHashCode ());
-					actor.Run (this.simulator, this);
-					actor.HasStarted = true;
-				} else if (actor.IsWaiting == true) {
-					Logger.Debug ("EventManager", "Dispatch", "Waiting for " + actor.GetHashCode());
+				Logger.Debug ("EventManager", "Dispatch", "Object " + actor.ToString() + " at initiative " + this.Initiative.ToString());
+				/*var e = actor as Entity;
+				if (e!= null && e.ID != Simulator.PLAYER_ID && actor.HasEnded == false) {
+					//Logger.Debug ("EventManager", "Dispatch", "Object " + e.ID + " is waiting");
 					return;
-				} else if (actor.HasEnded) {
-					Logger.Debug ("EventManager", "Dispatch", "Replanning object " + actor.GetHashCode());
-					this.Replan (actor);
-					//this.Dispatch ();
-					//return;
-				}*/
-				if (actor.IsWaiting /*|| actor.HasEnded == false*/) {
-					return;
-				//} else if (actor.HasEnded == false) {
-				//	actor.Run (this.simulator, this);
 				} else {
 					//Logger.Debug ("EventManager", "Dispatch", "Object to process " + actor.GetHashCode() + " at initiative " + this.Initiative.ToString());
 					this.Initiative = actor.Initiative;
 					actor.Run (this.simulator, this);
-					this.Replan (actor);
+					if (actor.HasEnded) {
+						this.actorQueue.Sort ();
+						//this.Replan (actor);
+					}
+				}*/
+				this.Initiative = actor.Initiative;
+				actor.Run (this.simulator, this);
+				if (this.WaitingForUser) {
+					return;
+				} else {
+					actor.HasEnded = true;
+					this.actorQueue.Sort ();
 				}
+				//if (actor.HasEnded) {
+					//this.actorQueue.Sort ();
+					//Logger.Debug ("EventManager", "Dispatch", "Current Queue " + actorQueue.Count.ToString());
+				//}
 			}
 		}
 
 		public int Initiative {
 			get;
-			private set;
+			internal set;
 		}
 
 		public void QueueObject(EventObject obj, int initiative) {
 			//Logger.Debug ("EventManager", "QueueObject", "Adding object " + obj.GetHashCode());
 			obj.Initiative = initiative;
 			obj.HasEnded = false;
-			obj.HasStarted = false;
-			//obj.IsWaiting = false;
 			if (this.actorQueue.Count < 0) {
 				this.actorQueue.Add (obj);
 			} else {
@@ -148,35 +139,44 @@ namespace WizardsDuel.Game
 		}
 
 		public void Replan(EventObject obj) {
-			var newInitiative = obj.UpdateInitiative ();
+			var newInitiative = 1;//obj.UpdateInitiative ();
 			if (newInitiative < 0) {
 				this.actorQueue.Remove (obj);
 				//Logger.Debug ("EventManager", "Replan", "Removing object " + obj.GetHashCode ());
 			} else {
-				obj.HasStarted = false;
 				obj.HasEnded = false;
 				this.actorQueue.Sort ();
 			}
 		}
 
 		public bool RunUserEvent() {
-			if (this.userEvent != null) {
-				Logger.Debug ("EventManager", "RunUserEvent", "Running user event " + this.userEvent.ToString());
+			if (this.userEvent != null && simulator.GetPlayer().OutObject.IsInIdle) {
+			//if (this.userEvent != null) {
+				//Logger.Debug ("EventManager", "RunUserEvent", "Running user event " + this.userEvent.ToString());
+				var player = simulator.GetPlayer();
+				simulator.world.CalculateFoV (player.X, player.Y, 6);
 				this.userEvent.Run ();
 				this.userEvent = null;
 				return true;
 			} else {
+				this.ClearUserEvent ();
 				return false;
 			}
 		}
 
 		public void SetUserEvent(Event userEvent) {
-			Logger.Debug ("EventManager", "SetUserEvent", "Got new user event " + userEvent.ToString());
+			Logger.Info ("EventManager", "SetUserEvent", "Got new user event " + userEvent.ToString());
 			this.userEvent = userEvent;
 		}
 
 		public bool UserEventInQueue {
 			get { return this.userEvent != null; }
+		}
+
+		public void WaitAndRun(int millis, Event evt) {
+			this.AppendEvent (new WaitEvent (millis));
+			this.AppendEvent (evt);
+			//this.userEvent = null;
 		}
 
 		public void WaitFor(int millis) {
@@ -185,10 +185,6 @@ namespace WizardsDuel.Game
 			//this.userEvent = null;
 		}
 
-		public void WaitAndRun(int millis, Event evt) {
-			this.AppendEvent (new WaitEvent (millis));
-			this.AppendEvent (evt);
-			//this.userEvent = null;
-		}
+		public bool WaitingForUser { get; set; }
 	}
 }

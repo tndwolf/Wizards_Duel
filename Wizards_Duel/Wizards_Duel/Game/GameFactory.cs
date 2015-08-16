@@ -76,6 +76,9 @@ namespace WizardsDuel.Game
 				case ArtificialIntelligence.LAVA:
 					res.AI = new LavaAI();
 					break;
+				case ArtificialIntelligence.MELEE:
+					res.AI = new MeleeAI();
+					break;
 				default: break;
 				}
 

@@ -212,6 +212,7 @@ namespace WizardsDuel.Io
 		private RenderTexture layerTexture;
 		private Sprite layerSprite;
 		private bool[,] drawGrid;
+		private bool[,] inLosGrid;
 		private RectangleShape tile;
 		private int gridBorder = 0;
 		private int gridPadding = 0;
@@ -233,6 +234,7 @@ namespace WizardsDuel.Io
 			this.GridWidth = gridWidth;
 			this.GridHeight = gridHeight;
 			this.drawGrid = new bool[gridHeight, gridWidth];
+			this.inLosGrid = new bool[gridHeight, gridWidth];
 
 			this.tile = new RectangleShape(new Vector2f(cellWidth, cellHeight));
 			this.GridPadding = 2;
@@ -263,6 +265,11 @@ namespace WizardsDuel.Io
 						try {
 							if (this.drawGrid [y, x] == true && this.Selected.X == x && this.Selected.Y == y) {
 								this.tile.FillColor = Color.Green;
+								this.tile.Position = bufferPosition;
+								target.Draw(this.tile, states);
+							}
+							else if (this.drawGrid [y, x] == true && this.inLosGrid[y, x] == true) {
+								this.tile.FillColor = Color.White;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
 							}
@@ -350,6 +357,14 @@ namespace WizardsDuel.Io
 		override public void SetCenter(Vector2f center) {
 			base.SetCenter (center);
 			this.AdjustLayer ();
+		}
+
+		public void SetInLos(int x, int y, bool inLos) {
+			try {
+				this.inLosGrid [y, x] = inLos;
+			} catch {
+				Logger.Warning ("GridLayer", "SetInLos", "Out of bounds " + x.ToString() + "," + y.ToString());
+			}
 		}
 
 		public void SetTile(int x, int y, bool draw) {

@@ -139,16 +139,16 @@ namespace WizardsDuel.Io
 		}
 
 		private static void CheckKeyboard() {
-			if (Keyboard.IsKeyPressed (Keyboard.Key.Left) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad4)) {
+			if (Keyboard.IsKeyPressed (Keyboard.Key.A) || Keyboard.IsKeyPressed (Keyboard.Key.Left) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad4)) {
 				IoManager.inputs.Command = InputCommands.LEFT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Right) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad6)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.D) || Keyboard.IsKeyPressed (Keyboard.Key.Right) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad6)) {
 				IoManager.inputs.Command = InputCommands.RIGHT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Up) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad8)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.W) || Keyboard.IsKeyPressed (Keyboard.Key.Up) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad8)) {
 				IoManager.inputs.Command = InputCommands.UP;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Down) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad2)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.S) || Keyboard.IsKeyPressed (Keyboard.Key.Down) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad2)) {
 				IoManager.inputs.Command = InputCommands.DOWN;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad7)) {
@@ -311,7 +311,7 @@ namespace WizardsDuel.Io
 			//IoManager.window.MouseMoved += new EventHandler<MouseMoveEventArgs> (IoManager.MouseMove);
 			IoManager.window.MouseButtonPressed += new EventHandler<MouseButtonEventArgs> (IoManager.MousePressed);
 			IoManager.window.KeyPressed += new EventHandler<KeyEventArgs>(IoManager.KeyPressed);
-			//IoManager.window.TextEntered += new EventHandler<TextEventArgs> (IoManager.TextEntered);
+			IoManager.window.TextEntered += new EventHandler<TextEventArgs> (IoManager.TextEntered);
 		}
 
 		static public bool IsRunning { 

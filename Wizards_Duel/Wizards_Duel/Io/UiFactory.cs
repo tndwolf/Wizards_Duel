@@ -180,11 +180,14 @@ namespace WizardsDuel.Io
 					case "lightLayer":
 						var ll = new LightLayer (width, height);
 						ll.Scale = XmlUtilities.GetFloat(xlayer, "scale", 1f);
-						ll.AmbientLight = new SFML.Graphics.Color(
+						//var lcolor = XmlUtilities.GetColor(xlayer, "color", Color.White);
+						ll.AmbientLight = XmlUtilities.GetColor(xlayer, "ambient", Color.White);
+						/*ll.AmbientLight = new SFML.Graphics.Color(
 							(byte)XmlUtilities.GetInt (xlayer, "ambientRed"),
 							(byte)XmlUtilities.GetInt (xlayer, "ambientGreen"),
-							(byte)XmlUtilities.GetInt (xlayer, "ambientBlue")
-						);
+							(byte)XmlUtilities.GetInt (xlayer, "ambientBlue"),
+							(byte)XmlUtilities.GetInt (xlayer, "ambientAlpha", 255)
+						);*/
 						ll.Blend = UiFactory.GetBlend(xlayer);
 						view.AddLayer (ll, LayerType.LIGHTS);
 						break;

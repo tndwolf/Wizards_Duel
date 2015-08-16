@@ -88,6 +88,13 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		override public void AddAnimator(Animator a) {
+			base.AddAnimator (a);
+			foreach (var ps in this.particles) {
+				ps.AddAnimator (a);
+			}
+		}
+
 		public void AddParticleSystem(ParticleSystem ps) {
 			this.particles.Add (ps);
 		}
