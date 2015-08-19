@@ -38,11 +38,6 @@ namespace WizardsDuel.Io
 			if (text != null) target.Draw(text, states);
 		}
 
-		virtual public float Height { 
-			get;
-			set;
-		}
-
 		public string Text {
 			get { 
 				if (this.text != null) {
@@ -61,11 +56,6 @@ namespace WizardsDuel.Io
 					this.text.Color = Color.White;
 				}
 			}
-		}
-
-		virtual public float Width { 
-			get;
-			set;
 		}
 
 		#region IClickable implementation
@@ -148,89 +138,13 @@ namespace WizardsDuel.Io
 	}
 
 	/// <summary>
-	/// Basic icon widget
-	/// </summary>
-	public class Icon2: Widget {
-		public Sprite sprite = null;
-		private Facing facing = Facing.RIGHT;
-		protected bool updateFacing = false;
-		protected Vector2f offset = new Vector2f (0f, 0f);
-
-		public Icon2(string texture, IntRect srcRect, float scale = 1f) {
-			var tex = IoManager.LoadTexture (texture);
-			this.sprite = new Sprite (tex, srcRect);
-			//this.drawRect = this.sprite.GetGlobalBounds ();
-			/*this.drawRect.Width = srcRect.Width;
-			this.drawRect.Height = srcRect.Height;
-			this.Scale = scale;*/
-		}
-
-		virtual public Color Color { 
-			get { 
-				return this.sprite.Color;
-			}
-			set {
-				this.sprite.Color = value;
-			}
-		}
-
-		virtual public Facing Facing {
-			get { return this.facing; }
-			set {
-				if (this.facing != value) {
-					this.facing = value;
-					this.updateFacing = true;
-				}
-			}
-		}
-
-		/*override public void Move(int dx, int dy) {
-			this.drawRect.Left += dx;
-			this.drawRect.Top += dy;
-			this.sprite.Position = new Vector2f (this.drawRect.Left, this.drawRect.Top);
-		}
-
-		virtual public float Scale {
-			set { 
-				this.sprite.Scale = new Vector2f (value, value);
-				this.drawRect.Width *= value;
-				this.drawRect.Height *= value;
-			}
-		}
-
-		override public void SetPosition(float x, float y) {
-			this.drawRect.Left = x;
-			this.drawRect.Top = y;
-			this.sprite.Position = new Vector2f (x, y);
-		}*/
-
-		override public void Draw(RenderTarget target, RenderStates states) {
-			base.Draw (target, states);
-			/*if (this.updateFacing == true) {
-				this.sprite.Scale = new Vector2f (-this.sprite.Scale.X, this.sprite.Scale.Y);
-				switch (this.Facing) {
-				case Facing.LEFT:
-					this.offset = new Vector2f (this.Width, 0f);
-					break;
-				case Facing.RIGHT:
-					this.offset = new Vector2f (0f, 0f);
-					break;
-				default:
-					break;
-				}
-				this.updateFacing = false;
-			}*/
-			target.Draw(this.sprite, states);
-		}
-	}
-
-	/// <summary>
 	/// Basic Widget class from which all widgets inhereit
 	/// </summary>
 	public class Widget: Drawable {
 		protected List<Animator> animators = new List<Animator>();
 		List<Decorator> decorators = new List<Decorator>();
 		Vector2f position = new Vector2f();
+		Vector2f size = new Vector2f();
 
 		public Widget() {}
 
@@ -244,6 +158,7 @@ namespace WizardsDuel.Io
 		}
 
 		virtual public void AddDecorator(Decorator decorator) {
+			decorator.Parent = this;
 			this.decorators.Add(decorator);
 		}
 
@@ -253,9 +168,18 @@ namespace WizardsDuel.Io
 
 		#region Drawable implementation
 		virtual public void Draw(RenderTarget target, RenderStates states) {
+			PrivateDraw (this.DrawingRoutine, target, states);
+		}
+
+		virtual protected void DrawingRoutine(RenderTarget target, RenderStates states) {
+			return;
+		}
+
+		protected void PrivateDraw(Action<RenderTarget, RenderStates> drawingRouting, RenderTarget target, RenderStates states) {
 			foreach (var animator in this.animators) {
 				animator.Update(this);
 			}
+			drawingRouting (target, states);
 			foreach (var decorator in this.decorators) {
 				decorator.Draw(target, states);
 			}
@@ -266,9 +190,19 @@ namespace WizardsDuel.Io
 			this.position = new Vector2f(this.position.X + dx, this.position.Y + dy);
 		}
 
+		virtual public float Height { 
+			get { return this.size.Y; } 
+			set { this.size = new Vector2f(this.size.X, value); }
+		}
+
 		virtual public Vector2f Position {
 			get { return this.position; } 
 			set { this.position = value; }
+		}
+
+		virtual public Vector2f Size {
+			get { return this.size; } 
+			set { this.size = value; }
 		}
 
 		virtual public float X { 
@@ -279,6 +213,11 @@ namespace WizardsDuel.Io
 		virtual public float Y { 
 			get { return this.position.Y; } 
 			set { this.position = new Vector2f(this.position.X, value); }
+		}
+
+		virtual public float Width { 
+			get { return this.size.X; } 
+			set { this.size = new Vector2f(value, this.size.Y); }
 		}
 	}
 }

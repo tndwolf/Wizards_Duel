@@ -16,6 +16,9 @@
 
 using System;
 using WizardsDuel.Io;
+using WizardsDuel.Game;
+using WizardsDuel.Utils;
+using SFML.Graphics;
 
 namespace WizardsDuel.States
 {
@@ -24,13 +27,31 @@ namespace WizardsDuel.States
 		MENU,
 		PLAY,
 		TEST,
+		TITLE,
 		QUIT
 	}
 
-	public class GameState
-	{
+	/// <summary>
+	/// Base GameState class
+	/// </summary>
+	public class GameState {
 		public GameState () {
 			this.NextState = GameStates.NO_CHANGE;
+		}
+
+		public static void ChangeState(ref GameState state) {
+			switch (state.NextState) {
+			case GameStates.TEST:
+				state = new TestState ();
+				break;
+			
+			case GameStates.TITLE:
+				state = new TitleState ();
+				break;
+
+			default:
+				break;
+			}
 		}
 
 		public virtual void Logic(Inputs inputs) {
@@ -45,7 +66,95 @@ namespace WizardsDuel.States
 		}
 
 		public virtual void Render() {
-			return;
+			IoManager.Draw ();
+		}
+	}
+
+	/// <summary>
+	/// Test state, for development purposes (not unit testing).
+	/// </summary>
+	public class TestState: GameState {
+		public TestState(): base() {
+			IoManager.Clear ();
+			WorldView tm;
+			Simulator.Instance.Initialize (out tm);
+		}
+
+		override public void Logic(Inputs inputs) {
+			var changeTo = "bp_exekiel";
+			if (inputs.Command == InputCommands.QUIT) {
+				this.NextState = GameStates.QUIT;
+			} else if (inputs.Command == InputCommands.UP) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, 0, -1));
+			} else if (inputs.Command == InputCommands.DOWN) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, 0, 1));
+			} else if (inputs.Command == InputCommands.LEFT) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, -1, 0));
+			} else if (inputs.Command == InputCommands.RIGHT) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, 1, 0));
+			} else if (inputs.Command == InputCommands.UP_RIGHT) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, 1, -1));
+			} else if (inputs.Command == InputCommands.DOWN_RIGHT) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, 1, 1));
+			} else if (inputs.Command == InputCommands.UP_LEFT) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, -1, -1));
+			} else if (inputs.Command == InputCommands.DOWN_LEFT) {
+				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, -1, 1));
+			} else if (inputs.Command == InputCommands.TOGGLE_GRID) {
+				Simulator.Instance.ToggleGrid ();
+			} else {
+				//Logger.Debug ("TestState", "Logic", "Inputs: " + inputs.Command.ToString ());
+			}
+
+			//Logger.Debug ("TestState", "Logic", "Current Unicode " + inputs.Unicode);
+			switch (inputs.Unicode) {
+			case "0":
+				Logger.Debug ("Main", "main", "Changing player");
+				var player = Simulator.Instance.GetPlayer ();
+				changeTo = (changeTo == "bp_rake") ? "bp_exekiel" : "bp_rake";
+				var tmp = Simulator.Instance.CreateObject ("tmp", changeTo, player.X, player.Y);
+				var oo = player.OutObject;
+				player.OutObject = tmp.OutObject;
+				tmp.OutObject = oo;
+				Simulator.Instance.world.worldView.ReferenceObject = player.OutObject;
+				Simulator.Instance.DestroyObject ("tmp");
+				break;
+			}
+
+			Simulator.Instance.DoLogic ();
+		}
+	}
+
+	public class TitleState: GameState {
+		private int page = 0;
+
+		public TitleState(): base() {
+			IoManager.Clear ();
+			IoManager.AddWidget(new Icon("0startscreen01_big.jpg", new IntRect(0,0,1280,720)));
+		}
+
+		override public void Logic(Inputs inputs) {
+			if (inputs.Command == InputCommands.QUIT) {
+				this.NextState = GameStates.QUIT;
+			} else if (inputs.Command != InputCommands.NONE) {
+				switch (this.page) {
+				case 0:
+					this.page++;
+					IoManager.Clear ();
+					IoManager.AddWidget (new Icon ("00_base_pc_fx.png", new IntRect (0, 0, 1280, 720)));
+					var label = new Label ("Test page, here you will find a short tutorial still screenshot", 16, "alagard_by_pix3m.ttf");
+					label.Position = new SFML.Window.Vector2f (200, 600);
+					IoManager.AddWidget (label);
+					var icon = new Icon("00_base_pc_fx.png", new IntRect (0, 0, 32, 32));
+					break;
+
+				default:
+					this.NextState = GameStates.TEST;
+					break;
+				}
+			} else {
+				//Logger.Debug ("TestState", "Logic", "Inputs: " + inputs.Command.ToString ());
+			}
 		}
 	}
 }

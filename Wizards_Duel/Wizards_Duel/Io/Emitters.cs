@@ -24,6 +24,7 @@ using WizardsDuel.Game;
 namespace WizardsDuel.Io
 {
 	public struct ParticleTemplate {
+		public AnimationDefinition animation;
 		public string texture;
 		public IntRect textureRect;
 		public float scale;
@@ -54,9 +55,9 @@ namespace WizardsDuel.Io
 			this.animators.Add (animator);
 		}
 
-		public void AddParticleTemplate(string texture, int x, int y, int width, int height, float scale = 1f) {
+		public void AddParticleTemplate(string texture, int x, int y, int width, int height, float scale = 1f, AnimationDefinition animation = null) {
 			var rect = new IntRect (x, y, width, height);
-			var pt = new ParticleTemplate () { texture = texture, textureRect = rect, scale = scale};
+			var pt = new ParticleTemplate () { animation = animation, texture = texture, textureRect = rect, scale = scale};
 			this.particleTemplates.Add (pt);
 		}
 
@@ -88,6 +89,11 @@ namespace WizardsDuel.Io
 				particle.Scale = 0.025f;*/
 				var template = this.particleTemplates [rnd.Next (this.particleTemplates.Count)];
 				var particle = new Particle (template.texture, template.textureRect);
+				if (template.animation != null) {
+					particle.AddAnimation ("IDLE", template.animation);
+					particle.IdleAnimation = "IDLE";
+					particle.SetAnimation ("IDLE");
+				}
 				this.particleSystem.AddParticle (particle);
 				//particle.Origin = new Vector2f(particle.Width/2, particle.Height/2);
 				particle.Position = new Vector2f(this.Position.X, this.Position.Y);

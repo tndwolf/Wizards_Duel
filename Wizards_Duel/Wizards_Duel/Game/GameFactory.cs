@@ -17,10 +17,10 @@
 using System;
 using System.Globalization;
 using System.Xml;
+using SFML.Graphics;
+using SFML.Window;
 using WizardsDuel.Io;
 using WizardsDuel.Utils;
-using SFML.Window;
-using SFML.Graphics;
 
 namespace WizardsDuel.Game
 {
@@ -52,11 +52,32 @@ namespace WizardsDuel.Game
 
 				return res;
 			} catch (Exception ex) {
-				Console.WriteLine (ex.ToString ());
+				Logger.Error ("GameFactory", "LoadGame", ex.ToString ());
 				var res = new World ();
 				res.worldView = new WorldView();
 				return res;
 			}
+		}
+
+		static public AnimationDefinition LoadAnimationDefinition(XmlNode animationRoot) {
+			AnimationDefinition res = new AnimationDefinition ();
+			var frames = animationRoot.SelectNodes("./frame");
+			for (int f = 0; f < frames.Count; f++) {
+				var frame = new AnimationFrame (
+					            XmlUtilities.GetInt (frames [f], "x"),
+					            XmlUtilities.GetInt (frames [f], "y"),
+					            XmlUtilities.GetInt (frames [f], "width"),
+					            XmlUtilities.GetInt (frames [f], "height"),
+								XmlUtilities.GetInt (frames [f], "duration"),
+					            XmlUtilities.GetString (frames [f], "sfx")
+				            );
+				frame.offset = new Vector2f (
+					XmlUtilities.GetFloat (frames [f], "offsetX"), 
+					XmlUtilities.GetFloat (frames [f], "offsetY")
+				);
+				res.AddFrame (frame);
+			}
+			return res;
 		}
 
 		static public Entity LoadFromTemplate(string templateId, string assignedId) {
@@ -80,6 +101,13 @@ namespace WizardsDuel.Game
 					res.AI = new MeleeAI();
 					break;
 				default: break;
+				}
+
+				var skills = template.SelectNodes("./skill");
+				for (int s = 0; s < skills.Count; s++) {
+					var skillId = XmlUtilities.GetString(skills[s], "ref");
+					var xmlSkill = GameFactory.xdoc.SelectSingleNode ("//skill[@id='" + skillId + "']");
+					res.skills.Add(LoadSkill(xmlSkill));
 				}
 
 				var variables = template.SelectNodes("./var");
@@ -115,24 +143,7 @@ namespace WizardsDuel.Game
 
 				var animations = outTemplate.SelectNodes("./animation");
 				for (int a = 0; a < animations.Count; a++) {
-					AnimationDefinition ad = new AnimationDefinition ();
-					var frames = animations[a].SelectNodes("./frame");
-					for (int f = 0; f < frames.Count; f++) {
-						var frame = new AnimationFrame(
-							XmlUtilities.GetInt(frames[f], "x"),
-							XmlUtilities.GetInt(frames[f], "y"),
-							XmlUtilities.GetInt(frames[f], "width"),
-							XmlUtilities.GetInt(frames[f], "height"),
-							XmlUtilities.GetInt(frames[f], "duration"),
-							XmlUtilities.GetString(frames[f], "sfx")
-						);
-						frame.offset = new Vector2f(
-							XmlUtilities.GetFloat(frames[f], "offsetX"), 
-							XmlUtilities.GetFloat(frames[f], "offsetY")
-						);
-						ad.AddFrame(frame);
-						//Logger.Debug ("GameFactory", "LoadFromTemplate", "Added frame" + frame.ToString());
-					}
+					var ad = LoadAnimationDefinition(animations[a]);
 					res.OutObject.AddAnimation (XmlUtilities.GetString(animations[a], "name"), ad);
 					//Logger.Debug ("GameFactory", "LoadFromTemplate", "Added animation " + XmlUtilities.GetString(animations[a], "name"));
 				}
@@ -277,14 +288,26 @@ namespace WizardsDuel.Game
 							break;
 
 						case "particleTemplate":
-							emitter.AddParticleTemplate(
-								XmlUtilities.GetString(children[c], "texture"),
-								XmlUtilities.GetInt(children[c], "x"),
-								XmlUtilities.GetInt(children[c], "y"),
-								XmlUtilities.GetInt(children[c], "width"),
-								XmlUtilities.GetInt(children[c], "height"),
-								XmlUtilities.GetFloat(children[c], "scale", 1f)
-							);
+							if (children[c].HasChildNodes) {
+								emitter.AddParticleTemplate(
+									XmlUtilities.GetString(children[c], "texture"),
+									XmlUtilities.GetInt(children[c], "x"),
+									XmlUtilities.GetInt(children[c], "y"),
+									XmlUtilities.GetInt(children[c], "width"),
+									XmlUtilities.GetInt(children[c], "height"),
+									XmlUtilities.GetFloat(children[c], "scale", 1f),
+									LoadAnimationDefinition(children[c])
+								);
+							} else {
+								emitter.AddParticleTemplate(
+									XmlUtilities.GetString(children[c], "texture"),
+									XmlUtilities.GetInt(children[c], "x"),
+									XmlUtilities.GetInt(children[c], "y"),
+									XmlUtilities.GetInt(children[c], "width"),
+									XmlUtilities.GetInt(children[c], "height"),
+									XmlUtilities.GetFloat(children[c], "scale", 1f)
+								);
+							}
 							Logger.Debug ("GameFactory", "LoadParticleFromTemplate", "New particle: " + children[c].ToString());
 							break;
 
@@ -327,6 +350,70 @@ namespace WizardsDuel.Game
 				Logger.Warning ("GameFactory", "LoadParticleFromTemplate", ex.ToString ());
 				return null;
 			}
+		}
+	
+		static public Skill LoadSkill(XmlNode skillRoot) {
+			Skill res = new Skill ();
+			res.CoolDown = XmlUtilities.GetInt (skillRoot, "cooldown");
+			res.ID = XmlUtilities.GetString (skillRoot, "id");
+			res.Name = XmlUtilities.GetString (skillRoot, "name");
+			res.Priority = XmlUtilities.GetInt (skillRoot, "priority");
+			res.IconTexture = XmlUtilities.GetString (skillRoot, "iconTexture");
+			res.MouseIconTexture = XmlUtilities.GetString (skillRoot, "mouseIconTexture");
+			res.IconRect = XmlUtilities.GetIntRect (skillRoot, "iconRect", new IntRect(0,0,0,0));
+			res.MouseIconRect = XmlUtilities.GetIntRect (skillRoot, "mouseIconRect", new IntRect(0,0,0,0));
+			var scripts = skillRoot.SelectNodes("./script");
+			for (int s = 0; s < scripts.Count; s++) {
+				var type = XmlUtilities.GetString (scripts [s], "type");
+				switch (type) {
+				case "ON_EMPTY":
+					res.OnEmptyScript = LoadSkillScript (scripts [s]);
+					break;
+
+				case "ON_SELF":
+					res.OnSelfScript = LoadSkillScript (scripts [s]);
+					break;
+
+				case "ON_TARGET":
+					res.OnTargetScript = LoadSkillScript (scripts [s]);
+					break;
+
+				default:
+					break;
+				}
+			}
+			return res;
+		}
+
+		static public SkillScript LoadSkillScript(XmlNode scriptRoot) {
+			SkillScript res;
+			//var scripts = XmlUtilities.GetString (scriptRoot, "script");
+			//Logger.Debug ("AAAAAAAAAAAAAAAAAAARGH", "LoadSkillScript", scripts);
+			var script = XmlUtilities.GetStringArray (scriptRoot, "script", true);
+			Logger.Debug ("AAAAAAAAAAAAAAAAAAARGH", "LoadSkillScript", script.ToString ());
+			switch (script[0]) {
+			case "DAMAGE":
+				res = new DamageSkillScript ();
+				var dtmp = res as DamageSkillScript;
+				dtmp.Damage = int.Parse (script [1]);
+				dtmp.DamageType = script [2];
+				break;
+
+			case "SPAWN":
+				res = new SpawnSkillScript ();
+				var stmp = res as SpawnSkillScript;
+				stmp.SpawnTemplateId = script [2];
+				break;
+
+			default:
+				res = new SkillScript ();
+				break;
+			}
+			res.SelfAnimation = XmlUtilities.GetString (scriptRoot, "selfAnimation");
+			res.SelfParticle = XmlUtilities.GetString (scriptRoot, "selfParticle");
+			res.TargetAnimation = XmlUtilities.GetString (scriptRoot, "targetAnimation");
+			res.TargetParticle = XmlUtilities.GetString (scriptRoot, "targetParticle");
+			return res;
 		}
 	}
 }

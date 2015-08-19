@@ -43,9 +43,14 @@ namespace WizardsDuel.Io
 			target.Draw(this.text, states);
 		}
 
-		virtual public int Size {
+		virtual public int FontSize {
 			get { return (int)this.text.CharacterSize; }
 			set { this.text.CharacterSize = (uint)value; } 
+		}
+
+		override public Vector2f Position {
+			get { return this.text.Position; } 
+			set { this.text.Position = value; }
 		}
 
 		virtual public string Text {

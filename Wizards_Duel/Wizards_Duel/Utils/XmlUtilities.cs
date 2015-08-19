@@ -111,6 +111,23 @@ namespace WizardsDuel.Utils
 		}
 
 		/// <summary>
+		/// Gets an XML node attribute as a SFML IntRect.
+		/// </summary>
+		/// <returns>The attribute value or the default value.</returns>
+		/// <param name="node">Node.</param>
+		/// <param name="attributeName">Attribute name.</param>
+		/// <param name="def">Default value that will be returned on errors.</param>
+		static public SFML.Graphics.IntRect GetIntRect(XmlNode node, string attributeName, SFML.Graphics.IntRect def) {
+			try {
+				var buff = XmlUtilities.GetIntArray(node, attributeName);
+				var res = new SFML.Graphics.IntRect(buff[0], buff[1], buff[2], buff[3]);
+				return res;
+			} catch {
+				return def;
+			}
+		}
+
+		/// <summary>
 		/// Gets an XML node attribute as a string.
 		/// </summary>
 		/// <returns>The attribute value or the default value.</returns>
@@ -133,10 +150,11 @@ namespace WizardsDuel.Utils
 		/// <returns>The attribute value or an array containing a single empty string.</returns>
 		/// <param name="node">Node.</param>
 		/// <param name="attributeName">Attribute name.</param>
-		static public string[] GetStringArray(XmlNode node, string attributeName) {
+		static public string[] GetStringArray(XmlNode node, string attributeName, bool includeSpace = false) {
 			try {
 				var str = node.Attributes.GetNamedItem(attributeName).Value;
-				return str.Split(new char[]{',', ';'});
+				var separators = includeSpace ? new char[]{',', ';',' '} : new char[]{',', ';'};
+				return str.Split(separators);
 			} catch (Exception ex) {
 				Logger.Info ("XmlUtilities", "GetStringArray", ex.ToString ());
 				return new string[]{string.Empty};

@@ -63,8 +63,7 @@ namespace WizardsDuel.Io
 			set { this.sprite.Color = value; } 
 		}
 
-		override public void Draw(RenderTarget target, RenderStates states) {
-			base.Draw(target, states);
+		override protected void DrawingRoutine(RenderTarget target, RenderStates states) {
 			if (this.updateFacing == true) {
 				// flip the sprite
 				this.sprite.Scale = new Vector2f (-this.sprite.Scale.X, this.sprite.Scale.Y);
@@ -104,7 +103,7 @@ namespace WizardsDuel.Io
 			set { this.sprite.TextureRect = value; }
 		}
 
-		virtual public float Height { 
+		override public float Height { 
 			get { return this.size.Y; }
 			set { 
 				this.size.Y = value; 
@@ -137,6 +136,11 @@ namespace WizardsDuel.Io
 			set { this.Height = value * this.sprite.TextureRect.Height; }
 		}
 
+		override public Vector2f Size { 
+			get { return this.size; } 
+			set { this.X = value.X; this.Y = value.Y; }
+		}
+
 		override public float X { 
 			get { return this.sprite.Position.X; } 
 			set { this.sprite.Position = new Vector2f(value, this.sprite.Position.Y); }
@@ -148,7 +152,7 @@ namespace WizardsDuel.Io
 		}
 
 
-		virtual public float Width { 
+		override public float Width { 
 			get { return this.size.X; }
 			set { 
 				this.size.X = value; 

@@ -781,8 +781,8 @@ namespace WizardsDuel.Game
 				level.CloseTile = this.DefaultTile;
 				// Place the first block
 				var last = this.blocksById [this.startBlock];
-				var x = Simulator.Instance.Random (MaxWidth);
-				var y = Simulator.Instance.Random (MaxHeight);
+				var x = Simulator.Instance.Random (MaxWidth, 1);
+				var y = Simulator.Instance.Random (MaxHeight, 1);
 				level.PlaceBlock (last, x, y);
 				// place the other blocks
 				while (level.UsedArea < this.MinArea && iter < 1000) {

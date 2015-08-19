@@ -53,6 +53,7 @@ namespace WizardsDuel.Io
 
 	public static class IoManager {
 		public const string DEFAULT_FONT = "";
+		public const string DEFAULT_WIDGET_ID = "DWID";
 
 		private static string ASSETS_DIRECTORY = "Assets" + Path.DirectorySeparatorChar;
 
@@ -78,6 +79,7 @@ namespace WizardsDuel.Io
 		static long frameTime;
 		static Dictionary<string, Font> fonts = new Dictionary<string, Font>();
 		static BackgroundMusic music;
+		static Dictionary<string, Widget> namedWidgets = new Dictionary<string, Widget>();
 		static long referenceTime;
 		static Frame root;
 		static Dictionary<string, Sound> sounds = new Dictionary<string, Sound>();
@@ -89,8 +91,12 @@ namespace WizardsDuel.Io
 		/// accepts text inputs it will be added to the event dispatching queue
 		/// </summary>
 		/// <param name="widget">The Widget.</param>
-		static public void AddWidget(Widget widget) {
+		/// <param name="wid">A unique ID for the Widget. Existing ones are overwritren</param>
+		static public void AddWidget(Widget widget, string wid = DEFAULT_WIDGET_ID) {
 			IoManager.root.AddWidget(widget);
+			if (wid != DEFAULT_WIDGET_ID) {
+				IoManager.namedWidgets.Add (wid, widget);
+			}
 
 			var clickable = widget as IClickable;
 			if (clickable != null) {
@@ -136,6 +142,7 @@ namespace WizardsDuel.Io
 				}
 			}
 			IoManager.root.Clear();
+			IoManager.namedWidgets.Clear ();
 		}
 
 		private static void CheckKeyboard() {
@@ -258,6 +265,15 @@ namespace WizardsDuel.Io
 			inputs.Command = InputCommands.NONE;
 			inputs.Unicode = "";
 			return inputRes;
+		}
+
+		/// <summary>
+		/// Gets a named widget.
+		/// </summary>
+		/// <returns>The widget.</returns>
+		/// <param name="wid">Widget unique ID as set with AddWidget.</param>
+		public static Widget GetWidget(string wid) {
+			return IoManager.namedWidgets [wid];
 		}
 
 		/// <summary>

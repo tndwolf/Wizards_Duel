@@ -10,7 +10,9 @@ namespace WizardsDuel.Game
 		public Color DeathMain = Color.Red;
 		public IntRect DeathRect = new IntRect (0, 0, 1, 1);
 		public Color DeathSecundary = Color.Black;
+		public List<Effect> effects = new List<Effect>();
 		public WizardsDuel.Io.OutObject OutObject = null;
+		public List<Skill> skills = new List<Skill>();
 		public Dictionary<string, int> Vars = new Dictionary<string, int>();
 		public int X = 0;
 		public int Y = 0;
@@ -19,6 +21,13 @@ namespace WizardsDuel.Game
 			this.ID = id;
 			this.TemplateID = templateId;
 			this.AI = new ArtificialIntelligence ();
+			this.Visible = true;
+		}
+
+		public void AddEffect(Effect effect) {
+			this.effects.Add (effect);
+			effect.Parent = this;
+			effect.OnAdded ();
 		}
 
 		private ArtificialIntelligence _AI;
@@ -69,12 +78,11 @@ namespace WizardsDuel.Game
 			protected set;
 		}
 
-		public void SetAI(ArtificialIntelligence ai, bool runOnCreateScript = false) {
-			ai.Parent = this;
-			this._AI = ai;
-			if (runOnCreateScript) {
-				this._AI.onCreate ();
-			}
+		public int LastSeen { get; set; }
+
+		public void RemoveEffect(Effect effect) {
+			this.effects.Remove (effect);
+			effect.OnRemoved ();
 		}
 
 		public void SetVar(string name, int value) {
@@ -91,8 +99,20 @@ namespace WizardsDuel.Game
 			protected set;
 		}
 
+		public bool Visible {
+			get;
+			set;
+		}
+
 		#region EventObject implementation
 		public void Run (Simulator sim, EventManager ed) {
+			foreach (var effect in this.effects) {
+				effect.OnRound ();
+				if (effect.RemoveMe == true) {
+					effect.OnRemoved ();
+				}
+			}
+			this.effects.RemoveAll (x => x.RemoveMe == true);
 			this.AI.onRound ();
 			if (this.ID == Simulator.PLAYER_ID && ed.WaitingForUser == true) {
 				return;
@@ -101,11 +121,20 @@ namespace WizardsDuel.Game
 				this.HasEnded = true;
 				this.Initiative += Simulator.ROUND_LENGTH;
 			}
-			/*if (sim.world.InLos (this.X, this.Y)) {
-					this.OutObject.Alpha = 255;
-				} else {
-					this.OutObject.Alpha = 0;
-				}*/
+			//*
+			if (sim.world.InLos (this.X, this.Y)) {
+				this.LastSeen = this.Initiative;
+				if (this.Visible == false) {
+					//Logger.Debug ("Entity", "Run", "Showing " + this.ID);
+					this.Visible = true;
+					this.OutObject.AddAnimator (new WizardsDuel.Io.ColorAnimation (Color.Transparent, Color.White, 300));
+				}
+			} else {
+				if (this.Visible == true && this.LastSeen + Simulator.ROUND_LENGTH * 5 < this.Initiative) {
+					this.Visible = false;
+					this.OutObject.AddAnimator (new WizardsDuel.Io.ColorAnimation (Color.White, Color.Transparent, 300));
+				}
+			}//*/
 		}
 
 		bool hasEnded = false;
@@ -122,8 +151,17 @@ namespace WizardsDuel.Game
 			}
 		}
 
+		/// <summary>
+		/// Gets or sets the current absolute initiative count.
+		/// </summary>
+		/// <value>The initiative.</value>
 		public int Initiative { get; set; }
 
+		/// <summary>
+		/// Compares objects to sort them based on Initiative.
+		/// </summary>
+		/// <returns>The to.</returns>
+		/// <param name="obj">Object.</param>
 		public int CompareTo (object obj) {
 			try {
 				var comp = (EventObject) obj;

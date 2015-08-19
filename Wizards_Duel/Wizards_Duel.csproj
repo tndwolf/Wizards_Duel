@@ -64,6 +64,8 @@
     <Compile Include="Wizards_Duel\Utils\ProbabilityVector.cs" />
     <Compile Include="Wizards_Duel\Game\ArtificialIntelligence.cs" />
     <Compile Include="Wizards_Duel\Game\Entity.cs" />
+    <Compile Include="Wizards_Duel\Game\Effects.cs" />
+    <Compile Include="Wizards_Duel\Game\Skills.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Xml" />
@@ -190,6 +192,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Assets\00_fiery_pit.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Assets\0startscreen01_big.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

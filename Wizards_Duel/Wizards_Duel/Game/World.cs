@@ -78,62 +78,181 @@ namespace WizardsDuel.Game
 			for (int x = cx - updateRadius; x < cx + updateRadius; x++) {
 				if (IsValid(x,y0)) CalculateLoS(cx, cy, x, y0, sightRadius);
 				if (IsValid(x,y1)) CalculateLoS(cx, cy, x, y1, sightRadius);
-			}*/
+			}//*/
 
-			/*for (int y = cy - updateRadius; y < cy + updateRadius; y++) {
+			for (int y = cy - updateRadius; y < cy + updateRadius; y++) {
 				for (int x = cx - updateRadius; x < cx + updateRadius; x++) {
-					if (IsValid(x,y)) CalculateLoS(cx, cy, x, y, sightRadius);
+					var tmp = Math.Abs(cx - x) < sightRadius && Math.Abs(cy - y) < sightRadius;
+					if (IsValid (x, y)) {
+						var cell = this.GetTile (x, y);
+						cell.InLos = tmp;//CalculateLoS (cx, cy, x, y, sightRadius);
+						this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
+					}
 				}
-			}*/
+			}//*/
 		}
 
-		public void CalculateLoS(int x0, int y0, int x1, int y1, int maxRadius = 10) {
+		/// <summary>
+		/// Calculates the line of sight between two points and update the relative tile information.
+		/// The algorithm is simmetric.
+		/// This method should only be invoked by World.CalculateFoV.
+		/// </summary>
+		/// <param name="x0">Starting x coordinate.</param>
+		/// <param name="y0">Starting y coordinate.</param>
+		/// <param name="x1">Ending x coordinate</param>
+		/// <param name="y1">Ending y coordinate</param>
+		/// <param name="maxRadius">Max radius.</param>
+		public bool CalculateLoS(int x0, int y0, int x1, int y1, int maxRadius = 10) {
+			Logger.Debug ("World", "CalculateLoS", "Calculating LoS for " + new {x0, x1, y0, y1}.ToString());
+
+			bool steep = Math.Abs(y1 - y0) > Math.Abs(x1 - x0);
+			int tmp;
+			if (steep) {
+				tmp = x0; x0 = y0; y0 = tmp;
+				tmp = x1; x1 = y1; y1 = tmp;
+				/*Swap<int>(ref x0, ref y0); 
+				Swap<int>(ref x1, ref y1);*/
+			}
+			if (x0 > x1) {
+				tmp = x0; x0 = x1; x1 = tmp;
+				tmp = y0; y0 = y1; y1 = tmp;
+				//Swap<int>(ref x0, ref x1); 
+				//Swap<int>(ref y0, ref y1); 
+			}
+			var dX = x1 - x0;
+			var dY = Math.Abs (y1 - y0);
+			var err = dX / 2;
+			var ystep = (y0 < y1)? 1 : -1;
+			var y = y0;
+
+			var blocking = false;
+			for (int x = x0; x <= x1; ++x) {
+				blocking = steep ? 
+					this.GetTile (y, x).Template.IsSolid :
+					this.GetTile (x, y).Template.IsSolid;
+				if (blocking)
+					return false;
+				err = err - dY;
+				if (err < 0) {
+					y += ystep;
+					err += dX;
+				}
+			}
+			return true;
+
+			/*//int t, x, y, abs_delta_x, abs_delta_y, sign_x, sign_y, delta_x, delta_y;
+
+			var dx = x0 - x1;
+			var dy = y0 - y1;
+			var adx = Math.Abs (dx);
+			var ady = Math.Abs (dy);
+			var error = 0.0;
+			var de = (dx == 0) ? 1000000.0 : Math.Abs(dy / dx);
+			var sy = Math.Sign(dy); // delta no longer useful in itself, update with +1/-1 for movement
+			var sx = Math.Sign(dx);
+
+			// x & y: these are the monster's x & y coords
+			//x = monster_x;
+			//y = monster_y;
+
+			if(adx > ady) {
+				// X dominate loop
+				var t = ady * 2 - adx;
+				do
+				{
+					if(t >= 0)
+					{
+						y += sy;
+						t -= adx*2;
+					}
+					x += sy;
+					t += ady * 2;
+
+					// check to see if we are at the player's position
+					if (x == x0 && y == y0)
+					{
+						// return that the monster can see the player
+						return true;
+					}
+				}
+				while(this.GetTile(x,y).Template.IsSolid == false);
+					return false;
+			}
+			else
+			{
+				// Y dominate loop, this loop is basically the same as the x loop
+				t = abs_delta_x * 2 - abs_delta_y;
+				do
+				{
+					if(t >= 0)
+					{
+						x += sign_x;
+						t -= abs_delta_y * 2;
+					}
+					y += sign_y;
+					t += abs_delta_x * 2;
+					if(x == d.px && y == d.py)
+					{
+						return TRUE;
+					}
+				}
+				while(sight_blocked(x,y) == FALSE);
+				return FALSE;
+			}//*/
+			/*
 			var dx = x0 - x1;
 			var dy = y0 - y1;
 			var error = 0.0;
-			var de = (dx == 0) ? 100000.0 : Math.Abs(dy / dx);
-			dy = Math.Sign(dy); // delta no longer useful in itself, update with +1/-1 for movement
+			var de = (dx == 0) ? 1000000.0 : Math.Abs(dy / dx);
+			dy = Math.Sign(-dy); // delta no longer useful in itself, update with +1/-1 for movement
 			int y = y0; 
 			Tile cell;
 			bool isBlocking = false;
 			int calculatedCount = 0;
 			if (x0 <= x1) {
-				for (int x = x0; x < x1; x++) {
+				for (int x = x0; x < x1 + 1; x++) {
+					//Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString());
 					cell = this.GetTile(x, y);
 					cell.InLos = !isBlocking;
+					Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString() + " as LoS " + cell.InLos.ToString());
 					this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
 					if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
 					if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
 					error += de;
-					while (error >= 0.5) {
+					while (error >= 0.5 && y > 0 && y < this.GridHeight - 1) {
 						y += dy;
 						error -= 1.0;
 						cell = this.GetTile(x, y);
 						cell.InLos = !isBlocking;
+						Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString() + " as LoS " + cell.InLos.ToString());
 						this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
 						if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
 						if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
 					}
 				}
 			} else {
-				for (int x = x0; x > x1; x--) {
+				for (int x = x0; x > x1 - 1; x--) {
+					//Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString());
 					cell = this.GetTile(x, y);
 					cell.InLos = !isBlocking;
+					Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString() + " as LoS " + cell.InLos.ToString());
 					this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
 					if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
 					if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
 					error += de;
-					while (error >= 0.5) {
+					while (error >= 0.5 && y > 0 && y < this.GridHeight - 1) {
 						y += dy;
 						error -= 1.0;
+						//Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString());
 						cell = this.GetTile(x, y);
 						cell.InLos = !isBlocking;
+						Logger.Debug ("World", "CalculateLoS", "Processing " + new {x, y}.ToString() + " as LoS " + cell.InLos.ToString());
 						this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
 						if (!cell.IsExplored && cell.InLos) cell.IsExplored = true;
 						if (cell.Template.IsSolid || ++calculatedCount > maxRadius) isBlocking = true;
 					}
 				}
-			}
+			}//*/
 		}
 
 		public Vector2i EndCell { get; set; }
@@ -291,7 +410,7 @@ namespace WizardsDuel.Game
 				var comp = (EventObject) obj;
 				return this.Initiative.CompareTo (comp.Initiative);
 			} catch (Exception ex) {
-				Logger.Debug ("World", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+				Logger.Warning ("World", "CompareTo", "Trying to compare a wrong object " + ex.ToString());
 				return 0;
 			}
 		}

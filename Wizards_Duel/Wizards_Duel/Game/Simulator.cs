@@ -57,6 +57,11 @@ namespace WizardsDuel.Game
 			this.LoadArea ();
 		}
 
+		public void AddEffect (string oid, Effect effect) {
+			var target = GetObject (oid);
+			target.AddEffect (effect);
+		}
+
 		public void AddEvent(Event evt) {
 			this.events.AppendEvent (evt);
 		}
@@ -158,7 +163,7 @@ namespace WizardsDuel.Game
 				if (res.OutObject.IsAnimating) {
 					return;
 				};
-				res.OutObject.SetAnimation ("CAST1");
+				//res.OutObject.SetAnimation ("CAST1");
 				Entity target;
 				var targetId = GetObjectAt (gx, gy);
 				if (targetId != null && this.world.entities.TryGetValue (targetId, out target)) {
@@ -171,10 +176,15 @@ namespace WizardsDuel.Game
 							res.SetVar ("armor", 0);
 						}
 					} else {
-						CreateParticleOn ("p_hurt", targetId);
-						//this.events2.WaitFor (900);
-						//this.AddEvent (new KillEvent (target.ID));
-						Kill (target);
+						/*if ((InitiativeCount / 100) % 3 == 0) {
+							AddEffect (targetId, new FreezeEffect ());
+						} else if ((InitiativeCount / 100) % 3 == 1) {
+							CreateParticleOn ("p_hurt", targetId);
+						} else {
+							AddEffect (targetId, new BurningEffect ());
+						}*/
+						res.skills [0].OnTarget (res, target);
+						//Kill (target);
 					}
 				} else {
 					var r = Random (100);
@@ -229,6 +239,8 @@ namespace WizardsDuel.Game
 				this.events.QueueObject (newEntity, InitiativeCount/*createdEntityCount + 10*/);
 				createdEntityCount++;
 				newEntity.AI.onCreate ();
+				newEntity.Visible = false;
+				newEntity.OutObject.Color = Color.Transparent;
 				return newEntity;
 			} else {
 				Logger.Warning ("Simulator", "CreateObject", "cannot create " + oid + " " + templateId);
@@ -298,10 +310,6 @@ namespace WizardsDuel.Game
 
 		public int InitiativeCount {
 			get { return events.Initiative; }
-		}
-
-		public bool IsUserEventInQueue() {
-			return this.events.UserEventInQueue;
 		}
 
 		public void Kill(Entity target) {
@@ -384,6 +392,7 @@ namespace WizardsDuel.Game
 			foreach (var r in this.world.worldView.dungeon) {
 				//Logger.Info ("Simulator", "LoadArea", "r: " + r + " (" + r.Length.ToString() + ")");
 			}
+			this.world.worldView.AddAnimator(new ColorAnimation(Color.White, Color.Black, 250));
 		}
 
 		public Dictionary<string, Entity> ListEnemies() {
@@ -477,7 +486,8 @@ namespace WizardsDuel.Game
 					// goto new area
 					Logger.Debug ("Simulator", "Shift", "Moving to " + endX.ToString () + "," + endY.ToString () +  " vs " + world.EndCell.ToString());
 					if (oid == PLAYER_ID && world.EndCell.X == endX && world.EndCell.Y == endY) {
-						LoadArea ();
+						events.WaitAndRun (500, new MethodEvent (LoadArea));
+						//LoadArea ();
 					}
 				} else if (res.Faction != GetObject (bufferId).Faction) {
 					// something on my path, attack it

@@ -116,6 +116,10 @@ namespace WizardsDuel.Game
 			}
 		}
 
+		/// <summary>
+		/// Gets or sets the absolute initiative count.
+		/// </summary>
+		/// <value>The initiative.</value>
 		public int Initiative {
 			get;
 			internal set;
@@ -138,24 +142,13 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public void Replan(EventObject obj) {
-			var newInitiative = 1;//obj.UpdateInitiative ();
-			if (newInitiative < 0) {
-				this.actorQueue.Remove (obj);
-				//Logger.Debug ("EventManager", "Replan", "Removing object " + obj.GetHashCode ());
-			} else {
-				obj.HasEnded = false;
-				this.actorQueue.Sort ();
-			}
-		}
-
 		public bool RunUserEvent() {
 			if (this.userEvent != null && simulator.GetPlayer().OutObject.IsInIdle) {
 			//if (this.userEvent != null) {
 				//Logger.Debug ("EventManager", "RunUserEvent", "Running user event " + this.userEvent.ToString());
 				var player = simulator.GetPlayer();
-				simulator.world.CalculateFoV (player.X, player.Y, 6);
 				this.userEvent.Run ();
+				simulator.world.CalculateFoV (player.X, player.Y, 6);
 				this.userEvent = null;
 				return true;
 			} else {
@@ -169,20 +162,14 @@ namespace WizardsDuel.Game
 			this.userEvent = userEvent;
 		}
 
-		public bool UserEventInQueue {
-			get { return this.userEvent != null; }
-		}
-
 		public void WaitAndRun(int millis, Event evt) {
 			this.AppendEvent (new WaitEvent (millis));
 			this.AppendEvent (evt);
-			//this.userEvent = null;
 		}
 
 		public void WaitFor(int millis) {
 			//this.waitUntil = IoManager.Time + millis;
 			this.AppendEvent (new WaitEvent (millis));
-			//this.userEvent = null;
 		}
 
 		public bool WaitingForUser { get; set; }

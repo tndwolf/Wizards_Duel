@@ -49,8 +49,7 @@ namespace WizardsDuel.Game
 	}
 
 	public class ActorEvent: Event {
-		public ActorEvent (string oid, long deltaTime = 0): base (deltaTime)
-		{
+		public ActorEvent (string oid, long deltaTime = 0): base (deltaTime) {
 			this.Actor = oid;
 		}
 
@@ -60,88 +59,6 @@ namespace WizardsDuel.Game
 		virtual public string Actor {
 			get;
 			set;
-		}
-	}
-
-	public class AiEvent: ActorEvent {
-		public AiEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
-
-		override public bool Run() {
-			var sim = Simulator.Instance;
-			//Logger.Debug ("AiEvent", "Run", "Running time " + this.StartTime.ToString());
-			this.StartTime = 0;
-			this.DeltaTime = 15; // XXX this should come from the speed of the player actor!
-			var rnd = new Random ();
-
-			var player = sim.GetObject (Simulator.PLAYER_ID);
-			var actore = sim.GetObject (this.Actor);
-			var dx = Math.Sign(player.X - actore.X);
-			var dy = Math.Sign(player.Y - actore.Y);
-
-			//sim.CanShift(this.Actor, rnd.Next(-1,2), rnd.Next(-1,2), true);
-			sim.CanShift(this.Actor, dx, dy, true);
-			//sim.events.AppendEvent (this);
-			return true;
-		}
-	}
-
-	public class AreaAiEvent: Event {
-		private long areaDeltaTime;
-
-		public AreaAiEvent (long deltaTime = 0): base (deltaTime) {
-			this.areaDeltaTime = deltaTime;
-		}
-
-		override public bool Run() {
-			var sim = Simulator.Instance;
-			Logger.Info ("AreaAiEvent", "Run", "Running area events");
-
-			// XXX Test only, run the enemies
-			//if (acted == true)
-			{
-				//var sim = Simulator.Instance;
-				var player = sim.GetObject (Simulator.PLAYER_ID);
-				foreach (var enemy in sim.ListEnemies()) {
-					if (enemy.Value.Static == false) {
-						var dx = Math.Sign (player.X - enemy.Value.X);
-						var dy = Math.Sign (player.Y - enemy.Value.Y);
-						sim.CanShift (enemy.Key, dx, dy, true);
-					}
-				}
-			}
-			// XXX end of test
-
-			//5-5 7-7
-			/*var MAX_ENTITIES = 10;
-			var spawn = sim.Random (100);
-			if (spawn > 90 && sim.world.entities.Count < MAX_ENTITIES) {
-				var p = sim.GetObject (Simulator.PLAYER_ID);
-				var minX = p.X - 7;
-				var minY = p.Y - 5;
-				var maxX = p.X + 8;
-				var maxY = p.Y + 6;
-				var possibleCells = new List<Vector2i> ();
-				for(int y = minY; y < maxY; y++) {
-					for(int x = minX; x < maxX; x++) {
-						if (
-							!(y > minY && y < maxY - 1 && x > minX && x < maxX - 1) &&
-							sim.world.IsWalkable (x, y) &&
-							sim.GetObjectAt(x, y) == null
-						) {
-							possibleCells.Add (new Vector2i (x, y));
-						}
-					}
-				}
-				if (possibleCells.Count > 0) {
-					var position = possibleCells [sim.Random (possibleCells.Count)];
-					sim.CreateObject(sim.createdEntityCount.ToString (), "bp_firefly", position.X, position.Y);
-					Logger.Info ("AreaAiEvent", "Run", "Created object at " + position.ToString());
-				}
-			}*/
-
-			this.DeltaTime = this.areaDeltaTime;
-			//sim.events.AppendEvent (this);
-			return true;
 		}
 	}
 
@@ -213,6 +130,22 @@ namespace WizardsDuel.Game
 		}
 	}
 
+	public class MethodEvent: Event {
+		private Action function;
+
+		public MethodEvent (Action function, long deltaTime = 0): base(deltaTime) {
+			this.function = function;
+		}
+
+		/// <summary>
+		/// Executes this event, return true if the event has ended, false otherwise
+		/// </summary>
+		override public bool Run() {
+			this.function ();
+			return true;
+		}
+	}
+
 	public class ShiftEvent: ActorEvent {
 		public ShiftEvent(string oid, int dx, int dy, long deltaTime = 0):
 		base (oid, deltaTime) {
@@ -262,39 +195,6 @@ namespace WizardsDuel.Game
 		virtual public Entity Target {
 			get;
 			set;
-		}
-	}
-
-	public class UserEvent : Event {
-		EventManager eventDispatcher;
-		public UserEvent(EventManager ed, long deltaTime = 0): base (deltaTime) {
-			this.eventDispatcher = ed;
-		}
-
-		override public bool Run() {
-			//Logger.Debug ("UserEvent", "Run", "Running time " + this.StartTime.ToString());
-			var acted = this.eventDispatcher.RunUserEvent ();
-			this.StartTime = 0;
-			this.DeltaTime = (acted == false) ? 0 : 10; // XXX this should come from the speed of the player actor!
-			//this.eventDispatcher.AppendEvent (this);
-
-			/*if (acted == true) {
-				var turn = ++this.eventDispatcher.turnCount;
-				if (turn % 10 == 9) {
-					var sim = Simulator.Instance;
-					var pc = sim.GetObject (Simulator.PLAYER_ID);
-					var buff = sim.GetObject(sim.GetObjectAt (pc.X, pc.Y));
-					if (buff == null || buff.TemplateID != "bp_fire_lava") {
-						var id = "lava_" + turn.ToString ();
-						sim.CreateObject (id, "bp_fire_lava", pc.X, pc.Y);
-						var lava = sim.GetObject (id);
-						lava.OutObject.SetAnimation ("CREATE");
-						//sim.CreateParticleAt ("p_lava", lava.X, lava.Y);
-					}
-				}
-			}//*/
-
-			return true;
 		}
 	}
 
