@@ -125,7 +125,7 @@ namespace WizardsDuel.Game
 
 		override public bool Run() {
 			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
-			Simulator.Instance.Cast(this.Actor, this.TargetX, this.TargetY);
+			Simulator.Instance.Click(this.Actor, this.TargetX, this.TargetY);
 			return true;
 		}
 	}

@@ -26,24 +26,31 @@ namespace WizardsDuel
 			try {
 				Logger.Initialize (LogLevel.ALL, true);
 				Logger.SetOutFile ();
-				Logger.Blacklist("XmlUtilities");
-				Logger.Blacklist("LoadWorldView");
-				Logger.Blacklist("LoadTilemask");
-				Logger.Blacklist("AddRule");
+
 				Logger.Blacklist("AddLayer");
-				Logger.Blacklist("SetDungeon");
+				Logger.Blacklist("AddRule");
+				Logger.Blacklist("AreaAI");
+				Logger.Blacklist("CalculateLoS");
 				Logger.Blacklist("CanShift");
-				Logger.Blacklist("WorldFactory");
-				Logger.Blacklist("TranslateAnimation");
+				Logger.Blacklist("Effect");
+				Logger.Blacklist("Entity");
+				Logger.Blacklist("EventManager");
+				Logger.Blacklist("GameFactory");
+				Logger.Blacklist("IoManager");
+				Logger.Blacklist("LoadTilemask");
+				Logger.Blacklist("LoadWorldView");
+				Logger.Blacklist("Main");
+				Logger.Blacklist("OnRound");
+				Logger.Blacklist("OutObject");
+				Logger.Blacklist("Run");
+				Logger.Blacklist("SetDungeon");
 				Logger.Blacklist("SetUserEvent");
 				Logger.Blacklist("Simulator");
-				//Logger.Blacklist("Entity");
-				Logger.Blacklist("EventManager");
-				Logger.Blacklist("SetUserEvent");
-				Logger.Blacklist("OutObject");
-				Logger.Blacklist("Main");
-				Logger.Blacklist("IO");
-				Logger.Blacklist("CalculateLoS");
+				Logger.Blacklist("TestLevel");
+				Logger.Blacklist("TranslateAnimation");
+				Logger.Blacklist("WorldFactory");
+				Logger.Blacklist("XmlUtilities");
+
 				IoManager.Initialize ("Wizard's Duel", 1280, 720);
 			} catch (Exception ex) {
 				Console.WriteLine ("Configuration Error, Aborting: " + ex.ToString());

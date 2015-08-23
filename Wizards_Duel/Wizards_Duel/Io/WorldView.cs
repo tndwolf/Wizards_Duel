@@ -207,21 +207,11 @@ namespace WizardsDuel.Io
 			var gy = (int)(this.referenceObject.CenterY - this.HalfHeight + e.Y) / this.CellHeight;
 			var gl = this.layers [this.gridLayer] as GridLayer;
  			gl.Selected = new Vector2i (gx, gy);
-			//Simulator.Instance.Cast(Simulator.PLAYER_ID, gx, gy);
-			Simulator.Instance.SetUserEvent(new CastEvent(Simulator.PLAYER_ID, gx, gy));
-
-			//var ruleset = this.ruleset["WALL-FACING"];
-			//var layer = this.WallLayer;
-			/*for (var r = 1; r < ruleset.Count; r++) {
-				var rule = ruleset[r];
-				if (rule.Test (gx, gy, this.dungeon) == true) {
-					Logger.Debug("WorldView", "OnMousePressed", "Rule at " + gx.ToString() + "," + gy.ToString() + ": " + rule.ToString());
-					Logger.Debug("WorldView", "OnMousePressed", "Texture " + rule.GetX(gx, gy).ToString() + "," + rule.GetY(gx, gy).ToString());
-					//layer.SetTile(x, y, rule.GetX(x, y), rule.GetY(x, y), rule.w, rule.h, rule.dx, rule.dy);
-					return;
-				}
+			if (e.Button == Mouse.Button.Right) {
+				Simulator.Instance.Select (gx, gy);
+			} else {
+				Simulator.Instance.SetUserEvent (new CastEvent (Simulator.PLAYER_ID, gx, gy));
 			}
-			Logger.Debug("WorldView", "OnMousePressed", "No rule found at " + gx.ToString() + "," + gy.ToString());*/
 		}
 
 		public void OnMouseReleased (object sender, MouseButtonEventArgs e) {

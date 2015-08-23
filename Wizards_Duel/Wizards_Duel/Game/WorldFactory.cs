@@ -774,6 +774,41 @@ namespace WizardsDuel.Game
 		public string DefaultTile { get; set; }
 
 		public string[,] Generate(World res) {
+			// Fill the metadata
+			var enemies = this.xdoc.SelectNodes("//enemy");
+			for (int e = 0; e < enemies.Count; e++) {
+				var bp = new EnemyBlueprint (
+					XmlUtilities.GetString(enemies[e], "blueprint"),
+					XmlUtilities.GetInt(enemies[e], "threat")
+				);
+				var type = XmlUtilities.GetString (enemies [e], "type");
+				switch (type) {
+				case "MOB":
+					bp.EnemyType = EnemyType.MOB;
+					break;
+				case "LIGHTNING_BRUISER":
+					bp.EnemyType = EnemyType.LIGHTNING_BRUISER;
+					break;
+				case "GLASS_CANNON":
+					bp.EnemyType = EnemyType.GLASS_CANNON;
+					break;
+				case "MIGHTY_GLACIER":
+					bp.EnemyType = EnemyType.MIGHTY_GLACIER;
+					break;
+				case "STONE_WALL":
+					bp.EnemyType = EnemyType.STONE_WALL;
+					break;
+				case "CASTER":
+					bp.EnemyType = EnemyType.CASTER;
+					break;
+				default:
+					break;
+				}
+				res.enemyBlueprints.Add (bp);
+			}
+			res.AI = new AreaAI ();
+
+			// Generate the map
 			BufferLevel level = null;
 			while (level == null) {
 				var iter = 0;
@@ -799,7 +834,7 @@ namespace WizardsDuel.Game
 			level.CloseExits ();
 			level.Trim ();
 			level.CellularAutomata ("asd", "res", 1);
-			level.Dump ();
+			//level.Dump ();
 			var img = level.ToImage ();
 			img.SaveToFile (Logger.LOGS_DIRECTORY + "level.png");
 

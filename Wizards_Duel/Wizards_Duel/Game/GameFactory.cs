@@ -102,20 +102,35 @@ namespace WizardsDuel.Game
 					break;
 				default: break;
 				}
+				var tags = XmlUtilities.GetStringArray(properties, "tags", true);
+				foreach(var tag in tags) {
+					res.AddTag(tag);
+				}
+
+				var icon = template.SelectSingleNode("./icon");
+				res.OutIcon = new Icon(XmlUtilities.GetString(icon, "texture"), XmlUtilities.GetIntRect(icon, "rect", new IntRect(0,0,0,0)));
 
 				var skills = template.SelectNodes("./skill");
 				for (int s = 0; s < skills.Count; s++) {
 					var skillId = XmlUtilities.GetString(skills[s], "ref");
 					var xmlSkill = GameFactory.xdoc.SelectSingleNode ("//skill[@id='" + skillId + "']");
-					res.skills.Add(LoadSkill(xmlSkill));
+					var skill = LoadSkill(xmlSkill);
+					skill.Show = XmlUtilities.GetBool(skills[s], "show");
+					res.AddSkill(skill);
 				}
 
 				var variables = template.SelectNodes("./var");
 				for (int v = 0; v < variables.Count; v++) {
-					res.Vars.Add(
-						XmlUtilities.GetString(variables[v], "name"),
-						XmlUtilities.GetInt(variables[v], "value")
-					);
+					var vname = XmlUtilities.GetString(variables[v], "name");
+					var vvalue = XmlUtilities.GetInt(variables[v], "value");
+					res.Vars[vname] = vvalue;
+					//res.Vars.Add(vname, vvalue);
+					if (vname == "HEALTH") {
+						res.MaxHealth = vvalue;
+					} else if (vname == "SPEED") {
+						res.SpeedFactor = (float)vvalue / 10f;
+						Logger.Debug ("GameFactory", "LoadFromTemplate", "Speed factor of " + templateId + ": " + res.SpeedFactor.ToString());
+					}
 				}
 
 				var death = template.SelectSingleNode("./death");
@@ -358,6 +373,7 @@ namespace WizardsDuel.Game
 			res.ID = XmlUtilities.GetString (skillRoot, "id");
 			res.Name = XmlUtilities.GetString (skillRoot, "name");
 			res.Priority = XmlUtilities.GetInt (skillRoot, "priority");
+			res.Range = XmlUtilities.GetInt (skillRoot, "range");
 			res.IconTexture = XmlUtilities.GetString (skillRoot, "iconTexture");
 			res.MouseIconTexture = XmlUtilities.GetString (skillRoot, "mouseIconTexture");
 			res.IconRect = XmlUtilities.GetIntRect (skillRoot, "iconRect", new IntRect(0,0,0,0));
@@ -387,10 +403,8 @@ namespace WizardsDuel.Game
 
 		static public SkillScript LoadSkillScript(XmlNode scriptRoot) {
 			SkillScript res;
-			//var scripts = XmlUtilities.GetString (scriptRoot, "script");
-			//Logger.Debug ("AAAAAAAAAAAAAAAAAAARGH", "LoadSkillScript", scripts);
 			var script = XmlUtilities.GetStringArray (scriptRoot, "script", true);
-			Logger.Debug ("AAAAAAAAAAAAAAAAAAARGH", "LoadSkillScript", script.ToString ());
+			Logger.Debug ("GameFactory", "LoadSkillScript", script.ToString ());
 			switch (script[0]) {
 			case "DAMAGE":
 				res = new DamageSkillScript ();
@@ -399,10 +413,16 @@ namespace WizardsDuel.Game
 				dtmp.DamageType = script [2];
 				break;
 
+			case "EFFECT":
+				res = new EffectSkillScript ();
+				var etmp = res as EffectSkillScript;
+				etmp.Effect = ParseEffect (script);
+				break;
+
 			case "SPAWN":
 				res = new SpawnSkillScript ();
 				var stmp = res as SpawnSkillScript;
-				stmp.SpawnTemplateId = script [2];
+				stmp.SpawnTemplateId = script [1];
 				break;
 
 			default:
@@ -413,6 +433,35 @@ namespace WizardsDuel.Game
 			res.SelfParticle = XmlUtilities.GetString (scriptRoot, "selfParticle");
 			res.TargetAnimation = XmlUtilities.GetString (scriptRoot, "targetAnimation");
 			res.TargetParticle = XmlUtilities.GetString (scriptRoot, "targetParticle");
+			return res;
+		}
+
+		static private Effect ParseEffect(string[] script) {
+			Effect res;
+			switch(script[1]) {
+			case "BURN":
+				res = new BurningEffect ();
+				var bres = res as BurningEffect;
+				bres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
+				bres.Strength = int.Parse (script [3]);
+				break;
+
+			case "FREEZE":
+				res = new FreezeEffect ();
+				var fres = res as FreezeEffect;
+				fres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
+				break;
+
+			case "GUARD":
+				res = new GuardEffect ();
+				var gres = res as GuardEffect;
+				gres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
+				break;
+
+			default:
+				res = new Effect();
+				break;
+			}
 			return res;
 		}
 	}

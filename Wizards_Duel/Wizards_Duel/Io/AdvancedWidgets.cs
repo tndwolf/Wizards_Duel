@@ -100,17 +100,19 @@ namespace WizardsDuel.Io
 		}
 
 		virtual public void Animate() {
-			List<Animator> newAnimators = new List<Animator> ();
-			foreach (var animator in base.animators) {
-				animator.Update (this);
-				if (animator.HasEnded == false) {
-					newAnimators.Add (animator);
+			if (StopAnimation == false) {
+				List<Animator> newAnimators = new List<Animator> ();
+				foreach (var animator in base.animators) {
+					animator.Update (this);
+					if (animator.HasEnded == false) {
+						newAnimators.Add (animator);
+					}
 				}
-			}
-			this.animators = newAnimators;
-			this.alreadyAnimated = true;
-			if (newAnimators.Count == 0 && this.IdleAnimation != null) {
-				this.SetAnimation (this.IdleAnimation);
+				this.animators = newAnimators;
+				this.alreadyAnimated = true;
+				if (newAnimators.Count == 0 && this.IdleAnimation != null) {
+					this.SetAnimation (this.IdleAnimation);
+				}
 			}
 		}
 
@@ -231,6 +233,13 @@ namespace WizardsDuel.Io
 			set { this.sprite.Position = value; }
 		}
 
+		public void RemoveAllParticleSystems() {
+			foreach (var particle in this.particles) {
+				particle.TTL = 0;
+			}
+			this.particles.RemoveAll (x => x.TTL < 1);
+		}
+
 		public void RemoveParticleSystem(string id) {
 			foreach (var particle in this.particles) {
 				if (particle.ID == id) {
@@ -258,6 +267,8 @@ namespace WizardsDuel.Io
 				this.IsInIdle = (id == this.IdleAnimation);
 			}
 		}
+
+		public bool StopAnimation { get; set; }
 
 		public bool ToBeDeleted { get; set; }
 

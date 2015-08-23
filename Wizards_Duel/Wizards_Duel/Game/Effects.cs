@@ -20,7 +20,18 @@ using WizardsDuel.Utils;
 namespace WizardsDuel.Game
 {
 	public class Effect {
+		public readonly string ID = "NULL_EFFECT";
+		public const int INFINITE_DURATION = 999999999;
 		protected int lastInitiative = 0;
+
+		virtual public Effect Clone {
+			get {
+				var res = new Effect ();
+				res.lastInitiative = this.lastInitiative;
+				res.Duration = this.Duration;
+				return res;
+			}
+		}
 
 		public int Duration { get; set; }
 
@@ -41,46 +52,147 @@ namespace WizardsDuel.Game
 		/// effect if the duration is expired
 		/// </summary>
 		virtual public void OnRound() {
-			var deltaInitiative = Simulator.Instance.InitiativeCount - this.lastInitiative;
-			this.Duration -= deltaInitiative;
+			Logger.Debug ("Effect", "OnRound", "Old duration " + this.Duration.ToString());
+			this.Duration -= Simulator.Instance.InitiativeCount - this.lastInitiative;
+			this.lastInitiative = Simulator.Instance.InitiativeCount;
+			Logger.Debug ("Effect", "OnRound", "Updated duration " + this.Duration.ToString());
 			if (this.Duration < 1) {
+				Logger.Debug ("Effect", "OnRound", "Set to be removed from " + this.Parent.ID);
 				this.RemoveMe = true;
 			}
 		}
 
 		public Entity Parent { get; internal set; }
 
+		virtual public int ProcessDamage(int howMuch, string type) {
+			return howMuch;
+		}
+
 		public bool RemoveMe { get; protected set; }
+
+		public Entity Target { get; set; }
 	}
 
 	public class BurningEffect: Effect {
+		new public readonly string ID = "BURN_EFFECT";
+
+		public BurningEffect(int duration = Simulator.ROUND_LENGTH * 4, int strength = 1) {
+			this.Duration = duration + 1;
+			this.Strength = strength;
+		}
+
+		override public Effect Clone {
+			get {
+				var res = new BurningEffect ();
+				res.lastInitiative = this.lastInitiative;
+				res.Duration = this.Duration;
+				res.Strength = this.Strength;
+				return res;
+			}
+		}
+
 		override public void OnAdded() {
 			base.OnAdded ();
-			this.Parent.OutObject.Color = new SFML.Graphics.Color(255, 255, 127);
+			this.Parent.OutObject.Color = new SFML.Graphics.Color(255, 127, 127);
 			Simulator.Instance.CreateParticleOn ("p_burning", this.Parent.ID);
-			this.Duration = Simulator.ROUND_LENGTH * 9 + 1;
 		}
 
 		override public void OnRemoved() {
 			this.Parent.OutObject.Color = SFML.Graphics.Color.White;
-			Simulator.Instance.RemoveParticle (this.Parent.ID, "p_freeze");
-			this.Parent.Static = false;
+			Simulator.Instance.RemoveParticle (this.Parent.ID, "p_burning");
 		}
+
+		override public void OnRound() {
+			base.OnRound ();
+			this.Parent.Damage(this.Strength, Simulator.DAMAGE_TYPE_FIRE);
+		}
+
+		public int Strength { get; set; }
 	}
 
 	public class FreezeEffect: Effect {
+		new public readonly string ID = "FREEZE_EFFECT";
+
+		public FreezeEffect(int duration = Simulator.ROUND_LENGTH * 4) {
+			this.Duration = duration + 1;
+		}
+
+		override public Effect Clone {
+			get {
+				var res = new FreezeEffect ();
+				res.lastInitiative = this.lastInitiative;
+				res.Duration = this.Duration;
+				return res;
+			}
+		}
+
 		override public void OnAdded() {
 			base.OnAdded ();
+			this.Parent.Frozen = true;
+			this.Parent.OutObject.StopAnimation = true;
 			this.Parent.OutObject.Color = new SFML.Graphics.Color(127, 255, 255);
-			//this.Parent.Static = true;
 			Simulator.Instance.CreateParticleOn ("p_freeze", this.Parent.ID);
-			this.Duration = Simulator.ROUND_LENGTH * 9 + 1;
 		}
 
 		override public void OnRemoved() {
+			this.Parent.Frozen = false;
+			this.Parent.OutObject.StopAnimation = false;
 			this.Parent.OutObject.Color = SFML.Graphics.Color.White;
 			Simulator.Instance.RemoveParticle (this.Parent.ID, "p_freeze");
-			this.Parent.Static = false;
+		}
+	}
+
+	public class GuardEffect: Effect {
+		new public string ID = "GUARD_EFFECT";
+
+		public GuardEffect() {
+			this.Duration = Simulator.ROUND_LENGTH * 3 + 1;
+			this.Strength = 1;
+			this.Type = Simulator.DAMAGE_TYPE_UNTYPED;
+		}
+
+		override public Effect Clone {
+			get {
+				var res = new GuardEffect ();
+				res.lastInitiative = lastInitiative;
+				res.Duration = Duration;
+				res.Strength = this.Strength;
+				res.Type = this.Type;
+				return res;
+			}
+		}
+
+		override public void OnAdded() {
+			base.OnAdded ();
+			Logger.Debug ("GuardEffect", "OnAdded", "Adding effect to " + this.Parent.ID);
+			this.Parent.OutObject.SetAnimation ("CAST1");
+			Simulator.Instance.CreateParticleOn ("p_truce", this.Parent.ID);
+			this.Parent.SetVar ("armor", 1);
+		}
+
+		override public void OnRemoved() {
+			this.Parent.SetVar ("armor", 0);
+			Logger.Debug ("GuardEffect", "OnRemoved", "Removing effect to " + this.Parent.ID);
+			Simulator.Instance.RemoveParticle (this.Parent.ID, "p_truce");
+		}
+
+		override public int ProcessDamage(int howMuch, string type) {
+			if (this.Type == Simulator.DAMAGE_TYPE_UNTYPED || type == this.Type) {
+				howMuch -= this.Strength;
+			}
+			Logger.Debug ("GuardEffect", "ProcessDamage", "Reducing damage to " + this.Parent.ID + " to " + howMuch.ToString());
+			return (howMuch < 0) ? 0 : howMuch;
+		}
+
+		public int Strength { get; set; }
+
+		private string type;
+		public string Type { 
+			get { return this.type; } 
+			set {
+				this.type = value;
+				this.ID = "GUARD_EFFECT_" + type;
+			}
 		}
 	}
 }

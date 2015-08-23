@@ -2,6 +2,7 @@
 using SFML.Graphics;
 using System.Collections.Generic;
 using WizardsDuel.Utils;
+using WizardsDuel.Io;
 
 namespace WizardsDuel.Game
 {
@@ -13,6 +14,7 @@ namespace WizardsDuel.Game
 		public List<Effect> effects = new List<Effect>();
 		public WizardsDuel.Io.OutObject OutObject = null;
 		public List<Skill> skills = new List<Skill>();
+		public List<string> Tags = new List<string>();
 		public Dictionary<string, int> Vars = new Dictionary<string, int>();
 		public int X = 0;
 		public int Y = 0;
@@ -22,12 +24,32 @@ namespace WizardsDuel.Game
 			this.TemplateID = templateId;
 			this.AI = new ArtificialIntelligence ();
 			this.Visible = true;
+			this.Health = 1;
+			this.MaxHealth = 1;
+			this.SpeedFactor = 1f;
 		}
 
 		public void AddEffect(Effect effect) {
-			this.effects.Add (effect);
-			effect.Parent = this;
-			effect.OnAdded ();
+			var existing = this.effects.Find (x => x.ID == effect.ID);
+			if (existing != null) {
+				existing.Duration = Math.Max (effect.Duration, existing.Duration);
+				// TODO check for the maximum strength of effect
+			} else {
+				this.effects.Add (effect);
+				effect.Parent = this;
+				effect.OnAdded ();
+			}
+		}
+
+		public void AddSkill(Skill skill) {
+			this.skills.Add (skill);
+			this.skills.Sort();
+		}
+
+		public void AddTag(string tag) {
+			if (!this.Tags.Contains (tag)) {
+				this.Tags.Add (tag);
+			}
 		}
 
 		private ArtificialIntelligence _AI;
@@ -46,22 +68,62 @@ namespace WizardsDuel.Game
 		}
 
 		/// <summary>
+		/// Gets the maximum range of skills currently usable taking
+		/// into account Cooldowns and Status
+		/// </summary>
+		/// <value>The current active range.</value>
+		public int CurrentActiveRange {
+			get {
+				var res = 1;
+				foreach (var s in this.skills) {
+					if (s.RoundsToGo < 1 && s.Range > res) {
+						res = s.Range;
+					}
+				}
+				return res;
+			}
+		}
+
+		public void Damage(int howMuch, string type) {
+			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
+			/*foreach (var skill in this.skills) {
+				howMuch = skill.ProcessDamage (howMuch, type);
+			}*/
+			foreach (var effect in this.effects) {
+				howMuch = effect.ProcessDamage (howMuch, type);
+			}
+			this.AI.OnDamage (ref howMuch, type);
+			Logger.Debug ("Entity", "Damage", "After process " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
+			this.Health -= howMuch;
+			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
+			this.DamageBar.Level = 1f - (float)this.Health / (float)this.MaxHealth;
+			if (this.Health < 1) {
+				Simulator.Instance.Kill (this);
+			}
+		}
+
+		/// <summary>
 		/// If set the Enity is part of the environment, it will not act and cannot
 		/// be interacted with
 		/// </summary>
 		/// <value><c>true</c> if dressing; otherwise, <c>false</c>.</value>
-		public bool Dressing {
-			get;
-			set;
-		}
+		public bool Dressing  { get; set; }
 
 		/// <summary>
 		/// Gets or sets the faction of the Entity.
 		/// </summary>
 		/// <value>The faction.</value>
-		public string Faction {
-			get;
-			set;
+		public string Faction  { get; set; }
+
+		/// <summary>
+		/// Gets or sets a value indicating whether this <see cref="WizardsDuel.Game.Entity"/> is "stopped in time".
+		/// </summary>
+		/// <value><c>true</c> if frozen; otherwise, <c>false</c>.</value>
+		public bool Frozen { get; set; }
+
+		public Skill GetPrioritySkillInRange(int range) {
+			// note that skills are sorted by priority when added
+			return this.skills.Find (x => x.RoundsToGo < 1 && x.Range <= range);
 		}
 
 		public int GetVar(string name, int def=0) {
@@ -73,54 +135,91 @@ namespace WizardsDuel.Game
 			}
 		}
 
+		public bool HasTag(string tag) {
+			return this.Tags.Contains (tag);
+		}
+
+		public int Health {
+			get { return this.GetVar ("HEALTH"); }
+			set { this.SetVar ("HEALTH", value); }
+		}
+
 		public string ID {
 			get;
 			protected set;
 		}
 
+		public void Kill() {
+			/*foreach (var skill in this.skills) {
+				howMuch = skill.OnDeath ();
+			}*/
+			this.AI.OnDeath ();
+		}
+
 		public int LastSeen { get; set; }
+
+		public int MaxHealth { get; set; }
+
+		public Skill PrioritySkill {
+			get {
+				// note that skills are sorted by priority when added
+				return this.skills.Find (x => x.RoundsToGo < 1);
+			}
+		}
 
 		public void RemoveEffect(Effect effect) {
 			this.effects.Remove (effect);
 			effect.OnRemoved ();
 		}
 
+		public void RemoveTag(string tag) {
+			this.Tags.Remove (tag);
+		}
+
 		public void SetVar(string name, int value) {
 			this.Vars[name] = value;
 		}
 
-		public bool Static {
-			get;
-			set;
-		}
+		public float SpeedFactor { get; set; }
 
-		public string TemplateID {
-			get;
-			protected set;
-		}
+		public bool Static { get; set; }
 
-		public bool Visible {
-			get;
-			set;
-		}
+		public string TemplateID { get; protected set; }
+
+		public bool Visible { get; set; }
 
 		#region EventObject implementation
 		public void Run (Simulator sim, EventManager ed) {
-			foreach (var effect in this.effects) {
-				effect.OnRound ();
-				if (effect.RemoveMe == true) {
-					effect.OnRemoved ();
+			if (this.ID == Simulator.PLAYER_ID) {
+				ed.AcceptEvent = true;
+			}
+			if (!(this.ID == Simulator.PLAYER_ID && ed.WaitingForUser == true)) {
+				// must check, otherwise the effects on players will be repeated
+				// at each query for user inputs
+				foreach (var effect in this.effects) {
+					effect.OnRound ();
+					if (effect.RemoveMe == true) {
+						effect.OnRemoved ();
+					}
+				}
+				this.effects.RemoveAll (x => x.RemoveMe == true);
+				foreach (var skill in this.skills) {
+					skill.RoundsToGo -= 1;
+					if (skill.DamageBar != null)
+						skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CoolDown;
 				}
 			}
-			this.effects.RemoveAll (x => x.RemoveMe == true);
-			this.AI.onRound ();
+			if (this.Frozen == false && this.Dressing == false && this.Health > 0) {
+				this.AI.OnRound ();
+			}
 			if (this.ID == Simulator.PLAYER_ID && ed.WaitingForUser == true) {
 				return;
 			} else {
 				Logger.Debug ("Entity", "Run", "Ran " + this.ID + " at initiative " + sim.InitiativeCount.ToString());
 				this.HasEnded = true;
-				this.Initiative += Simulator.ROUND_LENGTH;
+				this.Initiative += (int)(Simulator.ROUND_LENGTH / this.SpeedFactor);
 			}
+			ed.AcceptEvent = false;
 			//*
 			if (sim.world.InLos (this.X, this.Y)) {
 				this.LastSeen = this.Initiative;
@@ -157,6 +256,12 @@ namespace WizardsDuel.Game
 		/// <value>The initiative.</value>
 		public int Initiative { get; set; }
 
+		public bool IsAnimating {
+			get { 
+				return this.Visible && !this.OutObject.IsInIdle;
+			}
+		}
+
 		/// <summary>
 		/// Compares objects to sort them based on Initiative.
 		/// </summary>
@@ -171,6 +276,12 @@ namespace WizardsDuel.Game
 				return 0;
 			}
 		}
+		#endregion
+
+		#region OutputUserInterface
+		internal Icon OutIcon { get; set; }
+		internal SolidBorder Border { get ; set; }
+		internal DamageBarDecorator DamageBar { get; set; }
 		#endregion
 	}
 }

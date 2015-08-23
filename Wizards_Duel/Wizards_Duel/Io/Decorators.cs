@@ -59,7 +59,18 @@ namespace WizardsDuel.Io
 		/// from 0.0 (no overlay) to 1.0 (fully covered).
 		/// </summary>
 		/// <value>The level.</value>
-		public float Level { get; set; }
+		public float Level { 
+			get { return this.level; }
+			set { 
+				if (value < 0f)
+					this.level = 0f;
+				else if (value > 1f)
+					this.level = 1f;
+				else
+					this.level = value;
+			}
+		}
+		private float level = 0f;
 
 		/// <summary>
 		/// By default the bar is drawn from top to bottom. If set to true the bar
@@ -94,8 +105,9 @@ namespace WizardsDuel.Io
 
 		public SolidBorder(Color color, float thickness = 1f) {
 			this.outline = new RectangleShape ();
-			this.Color = color;
-			this.Thickness = thickness;
+			this.outline.FillColor = Color.Transparent;
+			this.outline.OutlineColor = color;
+			this.outline.OutlineThickness = thickness;
 		}
 
 		public Color Color {

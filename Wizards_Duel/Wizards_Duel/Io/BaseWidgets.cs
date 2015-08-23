@@ -126,6 +126,10 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		virtual public bool Remove(Widget widget) {
+			return this.widgets.Remove (widget);
+		}
+
 		override public float X { 
 			get { return this.Position.X; }
 			set { this.Position = new Vector2f(value, this.Position.Y); }

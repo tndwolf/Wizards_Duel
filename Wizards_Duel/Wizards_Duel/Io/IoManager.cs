@@ -77,6 +77,11 @@ namespace WizardsDuel.Io
 		static Stopwatch clock;
 		static long deltaTime;
 		static long frameTime;
+		static RectangleShape fadeOverlay = new RectangleShape();
+		static Color fadeEndColor = Color.Transparent;
+		static Color fadeStartColor = Color.Transparent;
+		static int fadeEndTime = 0;
+		static int fadeRefTime = 0;
 		static Dictionary<string, Font> fonts = new Dictionary<string, Font>();
 		static BackgroundMusic music;
 		static Dictionary<string, Widget> namedWidgets = new Dictionary<string, Widget>();
@@ -95,6 +100,11 @@ namespace WizardsDuel.Io
 		static public void AddWidget(Widget widget, string wid = DEFAULT_WIDGET_ID) {
 			IoManager.root.AddWidget(widget);
 			if (wid != DEFAULT_WIDGET_ID) {
+				if (IoManager.namedWidgets.ContainsKey (wid)) {
+					var old = IoManager.namedWidgets [wid];
+					IoManager.root.Remove (old);
+					IoManager.namedWidgets.Remove (wid);
+				}
 				IoManager.namedWidgets.Add (wid, widget);
 			}
 
@@ -219,6 +229,21 @@ namespace WizardsDuel.Io
 				IoManager.deltaTime = delta;
 				IoManager.referenceTime = time;
 				IoManager.window.Draw(IoManager.root);
+
+				fadeRefTime += (int)delta;
+				if (fadeRefTime < fadeEndTime) {
+					var k = 1.0f - (float)(fadeEndTime - fadeRefTime) / (float)(fadeEndTime);
+					IoManager.fadeOverlay.FillColor = new Color (
+						(byte)(fadeStartColor.R * (1f-k) + fadeEndColor.R * k),
+						(byte)(fadeStartColor.G * (1f-k) + fadeEndColor.G * k),
+						(byte)(fadeStartColor.B * (1f-k) + fadeEndColor.B * k),
+						(byte)(fadeStartColor.A * (1f-k) + fadeEndColor.A * k)
+					);
+					if (k >= 0.95f)
+						Logger.Debug ("IoManager", "Draw", "Ending fade at " + IoManager.Time.ToString());
+				}
+				IoManager.window.Draw (IoManager.fadeOverlay);
+
 				IoManager.window.Display();
 				if (IoManager.music != null) IoManager.music.Update (IoManager.Time);
 			}
@@ -242,6 +267,16 @@ namespace WizardsDuel.Io
 		/// </summary>
 		static public int DeltaTime { 
 			get { return (int)deltaTime; }
+		}
+
+		static public void FadeTo (Color endColor, int durationMillis) {
+			// this delta covers for long waiting time before the next redraw,
+			// for example while loading a new level
+			int delta = (int)(IoManager.clock.ElapsedMilliseconds - IoManager.referenceTime);
+
+			IoManager.fadeEndColor = endColor;
+			IoManager.fadeEndTime = durationMillis + delta;
+			IoManager.fadeRefTime = 0;
 		}
 
 		/// <summary>
@@ -274,6 +309,10 @@ namespace WizardsDuel.Io
 		/// <param name="wid">Widget unique ID as set with AddWidget.</param>
 		public static Widget GetWidget(string wid) {
 			return IoManager.namedWidgets [wid];
+		}
+
+		public static int Height {
+			get { return (int)IoManager.window.Size.Y; }
 		}
 
 		/// <summary>
@@ -322,6 +361,9 @@ namespace WizardsDuel.Io
 			IoManager.FPS = 60;
 
 			//IoManager.root.X = 64;
+			IoManager.fadeOverlay.Position = new Vector2f(0f, 0f);
+			IoManager.fadeOverlay.Size = new Vector2f(width, height);
+			IoManager.fadeOverlay.FillColor = IoManager.fadeEndColor;
 
 			IoManager.window.Closed += new EventHandler(IoManager.OnClosed);
 			//IoManager.window.MouseMoved += new EventHandler<MouseMoveEventArgs> (IoManager.MouseMove);
@@ -354,7 +396,7 @@ namespace WizardsDuel.Io
 				}
 				res.GetTexture ((uint)size).Smooth = false;
 			} catch (Exception ex) {
-				Logger.Warning ("IO", "LoadFont", "Unable to load " + fileName + ": " + ex.ToString());
+				Logger.Warning ("IoManager", "LoadFont", "Unable to load " + fileName + ": " + ex.ToString());
 				res = null;
 			}
 			return res;
@@ -368,17 +410,18 @@ namespace WizardsDuel.Io
 		public static BackgroundMusic LoadMusic(string fileName) {
 			try {
 				if (IoManager.music != null && IoManager.music.FileName == fileName) {
-					Logger.Info ("IO", "LoadMusic","Already loaded " + fileName);
+					Logger.Info ("IoManager", "LoadMusic","Already loaded " + fileName);
 				} else {
 					var path = IoManager.GetAssetPath(fileName);
 					var mus = new Sound();
 					mus.SoundBuffer = new SoundBuffer(path);
+					mus.Volume = 5;
 					IoManager.music = new BackgroundMusic(mus, fileName);
-					Logger.Info ("IO", "LoadMusic","loaded music " + fileName);
+					Logger.Info ("IoManager", "LoadMusic","loaded music " + fileName);
 				}
 				return IoManager.music;
 			} catch (Exception ex) {
-				Logger.Warning ("IO", "LoadMusic", "Unable to load " + fileName + ": " + ex.ToString());
+				Logger.Warning ("IoManager", "LoadMusic", "Unable to load " + fileName + ": " + ex.ToString());
 				return null;
 			}
 		}
@@ -466,7 +509,7 @@ namespace WizardsDuel.Io
 			if (IoManager.music != null) {
 				IoManager.music.Play (loop, IoManager.Time);
 			} else {
-				Logger.Info ("IO", "PlayMusic", "No Music loaded");
+				Logger.Info ("IoManager", "PlayMusic", "No Music loaded");
 			}
 		}
 
@@ -484,7 +527,7 @@ namespace WizardsDuel.Io
 			try {
 				IoManager.sounds[soundFile].Play();
 			} catch (Exception ex) {
-				Logger.Warning ("IO", "PlaySound", "Unable to play " + soundFile + ": " + ex.ToString());
+				Logger.Warning ("IoManager", "PlaySound", "Unable to play " + soundFile + ": " + ex.ToString());
 			}
 		}
 
@@ -493,9 +536,9 @@ namespace WizardsDuel.Io
 		}
 
 		private static void TextEntered(object sender, TextEventArgs e) {
-			Logger.Info ("IO", "TextEntered", "Text " + e.Unicode);
+			Logger.Info ("IoManager", "TextEntered", "Text " + e.Unicode);
 			IoManager.inputs.Unicode = e.Unicode;
-			Logger.Info ("IO", "TextEntered", "Text " + IoManager.inputs.Unicode);
+			Logger.Info ("IoManager", "TextEntered", "Text " + IoManager.inputs.Unicode);
 		}
 
 		/// <summary>
@@ -504,6 +547,10 @@ namespace WizardsDuel.Io
 		/// </summary>
 		public static long Time {
 			get { return referenceTime; }
+		}
+
+		public static int Width {
+			get { return (int)IoManager.window.Size.X; }
 		}
 	}
 }

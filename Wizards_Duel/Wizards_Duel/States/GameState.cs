@@ -81,7 +81,7 @@ namespace WizardsDuel.States
 		}
 
 		override public void Logic(Inputs inputs) {
-			var changeTo = "bp_exekiel";
+			//var changeTo = "bp_exekiel";
 			if (inputs.Command == InputCommands.QUIT) {
 				this.NextState = GameStates.QUIT;
 			} else if (inputs.Command == InputCommands.UP) {
@@ -108,7 +108,7 @@ namespace WizardsDuel.States
 
 			//Logger.Debug ("TestState", "Logic", "Current Unicode " + inputs.Unicode);
 			switch (inputs.Unicode) {
-			case "0":
+			/*case "0":
 				Logger.Debug ("Main", "main", "Changing player");
 				var player = Simulator.Instance.GetPlayer ();
 				changeTo = (changeTo == "bp_rake") ? "bp_exekiel" : "bp_rake";
@@ -118,6 +118,25 @@ namespace WizardsDuel.States
 				tmp.OutObject = oo;
 				Simulator.Instance.world.worldView.ReferenceObject = player.OutObject;
 				Simulator.Instance.DestroyObject ("tmp");
+				break;*/
+
+			case "1":
+				Simulator.Instance.SelectedSkill = 1;
+				break;
+
+			case "2":
+				Simulator.Instance.SelectedSkill = 2;
+				break;
+
+			case "3":
+				Simulator.Instance.SelectedSkill = 3;
+				break;
+
+			case "4":
+				Simulator.Instance.SelectedSkill = 4;
+				break;
+
+			default:
 				break;
 			}
 
@@ -131,6 +150,9 @@ namespace WizardsDuel.States
 		public TitleState(): base() {
 			IoManager.Clear ();
 			IoManager.AddWidget(new Icon("0startscreen01_big.jpg", new IntRect(0,0,1280,720)));
+			var label = new Label ("Click to start", 32, "munro.ttf");
+			label.Position = new SFML.Window.Vector2f (524, IoManager.Height - 64);
+			IoManager.AddWidget (label);
 		}
 
 		override public void Logic(Inputs inputs) {
@@ -141,11 +163,7 @@ namespace WizardsDuel.States
 				case 0:
 					this.page++;
 					IoManager.Clear ();
-					IoManager.AddWidget (new Icon ("00_base_pc_fx.png", new IntRect (0, 0, 1280, 720)));
-					var label = new Label ("Test page, here you will find a short tutorial still screenshot", 16, "alagard_by_pix3m.ttf");
-					label.Position = new SFML.Window.Vector2f (200, 600);
-					IoManager.AddWidget (label);
-					var icon = new Icon("00_base_pc_fx.png", new IntRect (0, 0, 32, 32));
+					IoManager.AddWidget (new Icon ("00_tutorial.png", new IntRect (0, 0, 1280, 720)));
 					break;
 
 				default:

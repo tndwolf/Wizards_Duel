@@ -26,6 +26,7 @@ namespace WizardsDuel.Game
 	public class Simulator
 	{
 		internal int createdEntityCount = 0;
+		internal Skill currentSkill = null;
 		internal EventManager events;
 		private static Simulator instance;
 		private Random rng = new Random ();
@@ -39,6 +40,22 @@ namespace WizardsDuel.Game
 		public const int ROUND_LENGTH = 100;
 		public const string SPAWN_PARTICLE = "P_SPAWN";
 
+		public readonly Color COOLDOWN_BAR_COLOR = new Color(0, 0, 0, 127);
+		public readonly Color DAMAGE_BAR_COLOR = new Color(255, 0, 0, 127);
+		public readonly Color SELECTED_SKILL_COLOR = Color.Cyan;
+		public readonly Color UNSELECTED_SKILL_COLOR = new Color(127, 127, 127);
+		public const string TARGET_ICON_ID = "TARGET_ICON_ID";
+		public const int UI_VERTICAL_START = 16;
+		public const int UI_VERTICAL_SPACE = 96;
+		public const int UI_SCALE = 2;
+
+		public const string DAMAGE_TYPE_COLD = "COLD";
+		public const string DAMAGE_TYPE_FIRE = "FIRE";
+		public const string DAMAGE_TYPE_HOLY = "HOLY";
+		public const string DAMAGE_TYPE_NECRO = "NECRO";
+		public const string DAMAGE_TYPE_PHYSICAL = "PHYSICAL";
+		public const string DAMAGE_TYPE_UNTYPED = "";
+
 		private Simulator() {}
 
 		public static Simulator Instance {
@@ -50,11 +67,48 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public void Initialize(out WorldView worldView, bool initUserEvents = true) {
+		public void Initialize(out WorldView worldView) {
 			this.world = GameFactory.LoadGame(DEFAULT_DATA);
 			worldView = this.world.worldView;
 			this.events = new EventManager (this);
 			this.LoadArea ();
+		}
+
+		public void InitializeUserInterface() {
+			var targetPortrait = new Icon("", new IntRect(0,0,0,0));
+			IoManager.AddWidget (targetPortrait, TARGET_ICON_ID);
+			var y = UI_VERTICAL_START;
+			var player = GetPlayer ();
+			player.OutIcon.ScaleX = UI_SCALE;
+			player.OutIcon.ScaleY = UI_SCALE;
+			player.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
+			player.OutIcon.AddDecorator (player.Border);
+			player.DamageBar = new DamageBarDecorator (DAMAGE_BAR_COLOR);
+			player.DamageBar.InvertAxis = true;
+			player.OutIcon.AddDecorator (player.DamageBar);
+			player.OutIcon.Position = new Vector2f (UI_VERTICAL_START, y);
+			IoManager.AddWidget (player.OutIcon);
+			foreach (var s in player.skills) {
+				if (s.Show) {
+					y += UI_VERTICAL_SPACE;
+					s.OutIcon = new Icon (s.IconTexture, s.IconRect);
+					s.OutIcon.ScaleX = UI_SCALE;
+					s.OutIcon.ScaleY = UI_SCALE;
+					s.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
+					s.OutIcon.AddDecorator (s.Border);
+					s.DamageBar = new DamageBarDecorator (COOLDOWN_BAR_COLOR);
+					s.DamageBar.InvertAxis = true;
+					s.OutIcon.AddDecorator (s.DamageBar);
+					s.OutIcon.Position = new Vector2f (UI_VERTICAL_START, y);
+					IoManager.AddWidget (s.OutIcon);
+				}
+			}
+			foreach (var s in player.skills) {
+				if (s.Show) {
+					s.Border.Color = SELECTED_SKILL_COLOR;
+					break;
+				}
+			}
 		}
 
 		public void AddEffect (string oid, Effect effect) {
@@ -86,24 +140,17 @@ namespace WizardsDuel.Game
 			light.Parent = particle;
 		}
 
-		public void Attack(string attackerId, string targetId) {
-			//this.events.AppendEvent(new AttackEvent(GetObject(attackerId), GetObject(targetId)));
-			var Actor = GetObject(attackerId);
-			var Target = GetObject (targetId);
-			Logger.Debug ("Simulator", "Attack", Actor.ID + " attacks " + Target.ID);
-			SetAnimation (Actor, "ATTACK");
-			if (Actor.X != Target.X) {
-				Actor.OutObject.Facing = (Actor.X < Target.X) ? Facing.RIGHT : Facing.LEFT;
-				Target.OutObject.Facing = (Actor.X < Target.X) ? Facing.LEFT : Facing.RIGHT;
+		public void Attack(string attackerId, string targetId, int damage, string damageType) {
+			var actor = GetObject(attackerId);
+			var target = GetObject (targetId);
+			Logger.Debug ("Simulator", "Attack", actor.ID + " attacks " + target.ID);
+			if (actor.X != target.X && target.Static == false) {
+				actor.OutObject.Facing = (actor.X < target.X) ? Facing.RIGHT : Facing.LEFT;
+				target.OutObject.Facing = (actor.X < target.X) ? Facing.LEFT : Facing.RIGHT;
 			}
-			var newHealth = Target.GetVar (Simulator.HEALTH_VARIABLE, 1) - 1;
-			Target.SetVar (Simulator.HEALTH_VARIABLE, newHealth);
-			if (newHealth > 0) {
-				if (Target.GetVar ("armor") < 1) {
-					Simulator.Instance.Bleed (Target);
-				}
-			} else {
-				Simulator.Instance.Kill (Target);
+			target.Damage (damage, damageType);
+			if (target.ID != PLAYER_ID && attackerId == PLAYER_ID) {
+				IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);
 			}
 		}
 
@@ -136,17 +183,20 @@ namespace WizardsDuel.Game
 		/// <param name="dy">Delta Y.</param>
 		/// <param name="shiftIfPossible">If set to <c>true</c> run Shift().</param>
 		public bool CanShift(string oid, int dx, int dy, bool shiftIfPossible = false) {
-			Entity en;
 			bool res = false;
 			try {
-				if (this.world.entities.TryGetValue (oid, out en) && this.world.IsValid(en.X + dx, en.Y + dy)) {
-					var tile = this.world.GetTile(en.X + dx, en.Y + dy);
-					res = tile.Template.IsWalkable;
+				var en = GetObject(oid);
+				var objectsAtEnd = this.GetObjectsAt(en.X + dx, en.Y + dy);
+				if (this.world.IsValid(en.X + dx, en.Y + dy) && objectsAtEnd.Find(x => x.Static) == null) {
+					//var tile = this.world.GetTile(en.X + dx, en.Y + dy);
+					//res = tile.Template.IsWalkable;
+					res = this.IsSafeToWalk(en, en.X + dx, en.Y + dy);
 					if (shiftIfPossible && res) {
 						//Logger.Debug ("Simulator", "CanShift", "shifting " + oid);
 						Shift (oid, dx, dy);
-					}
-					else {
+					} else if (oid == PLAYER_ID && objectsAtEnd.Find(x => x.Faction == "MONSTERS") != null) {
+						Shift (oid, dx, dy);
+					} else {
 						Logger.Debug ("Simulator", "CanShift", "does not shift " + oid);
 						//Shift (oid, dx, dy);
 					}
@@ -157,46 +207,40 @@ namespace WizardsDuel.Game
 			return res;
 		}
 
-		public void Cast(string oid, int gx, int gy) {
+		public void Click(string oid, int gx, int gy) {
 			Entity res;
 			if (this.world.entities.TryGetValue (oid, out res)) {
 				if (res.OutObject.IsAnimating) {
 					return;
 				};
 				//res.OutObject.SetAnimation ("CAST1");
-				Entity target;
-				var targetId = GetObjectAt (gx, gy);
-				if (targetId != null && this.world.entities.TryGetValue (targetId, out target)) {
-					if (target == res) {
-						if (res.GetVar ("armor") == 0) {
-							CreateParticleOn ("p_truce", PLAYER_ID);
-							res.SetVar ("armor", 1);
-						} else {
-							RemoveParticle (PLAYER_ID, "p_truce");
-							res.SetVar ("armor", 0);
-						}
-					} else {
-						/*if ((InitiativeCount / 100) % 3 == 0) {
-							AddEffect (targetId, new FreezeEffect ());
-						} else if ((InitiativeCount / 100) % 3 == 1) {
-							CreateParticleOn ("p_hurt", targetId);
-						} else {
-							AddEffect (targetId, new BurningEffect ());
-						}*/
-						res.skills [0].OnTarget (res, target);
-						//Kill (target);
+				var targets = GetObjectsAt(gx, gy);
+				if (targets.Count > 0) {
+					var target = targets.Find (x => x.Faction == "MONSTERS");
+					//if (target == res) {
+					if (targets.Find (x => x == res) != null) {
+						TrySkill (currentSkill, res);
+						//currentSkill.OnSelf (res);
+					} else if (target.Dressing == false) {
+						TrySkill (currentSkill, res, target);
+						/*currentSkill.OnTarget (res, target);
+						target.DamageBar.Level = 1f - (float)target.Health / (float)target.MaxHealth;
+						IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);*/
 					}
 				} else {
+					//CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
+					/*
 					var r = Random (100);
-					if (r < 60) {
+					if (r < 30) {
 						CreateObject (createdEntityCount.ToString (), "bp_firefly", gx, gy);
-					} else if (r < 80) {
+					//*
+					} else if (r < 50) {
 						CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
-					} else if (r < 90) {
+					} else if (r < 80) {
 						CreateObject (createdEntityCount.ToString (), "bp_fire_salamander1", gx, gy);
 					} else {
 						CreateObject (createdEntityCount.ToString (), "bp_fire_bronze_thug1", gx, gy);
-					}
+					}//*/
 				}
 			}
 		}
@@ -218,7 +262,7 @@ namespace WizardsDuel.Game
 		}
 
 		public string CreateObject(string templateId, int gx=0, int gy=0) {
-			var id = createdEntityCount.ToString ();
+			var id = templateId + createdEntityCount.ToString ();
 			CreateObject (id, templateId, gx, gy);
 			return id;
 		}
@@ -238,9 +282,21 @@ namespace WizardsDuel.Game
 				this.events.Initiative++;
 				this.events.QueueObject (newEntity, InitiativeCount/*createdEntityCount + 10*/);
 				createdEntityCount++;
-				newEntity.AI.onCreate ();
+				newEntity.AI.OnCreate ();
 				newEntity.Visible = false;
 				newEntity.OutObject.Color = Color.Transparent;
+
+				if (oid != PLAYER_ID) {
+					newEntity.OutIcon.ScaleX = UI_SCALE;
+					newEntity.OutIcon.ScaleY = UI_SCALE;
+					newEntity.OutIcon.Position = new Vector2f(IoManager.Width - UI_VERTICAL_START - newEntity.OutIcon.Width, UI_VERTICAL_START);
+					newEntity.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
+					newEntity.OutIcon.AddDecorator (newEntity.Border);
+					newEntity.DamageBar = new DamageBarDecorator (DAMAGE_BAR_COLOR);
+					newEntity.DamageBar.InvertAxis = true;
+					newEntity.OutIcon.AddDecorator (newEntity.DamageBar);
+				}
+
 				return newEntity;
 			} else {
 				Logger.Warning ("Simulator", "CreateObject", "cannot create " + oid + " " + templateId);
@@ -249,24 +305,30 @@ namespace WizardsDuel.Game
 		}
 
 		public void CreateParticleAt(string pid, int gx, int gy) {
-			var ps = GameFactory.LoadParticleFromTemplate (pid, gx * this.CellWidth, gy * this.CellHeight, this.world.worldView.ObjectsLayer);
-			IoManager.AddWidget (ps);
-			Logger.Debug ("Simulator", "CreateParticle", ps.ToString());
+			var ps = GameFactory.LoadParticleFromTemplate (pid, (gx + 0.5f) * this.CellWidth, (gy + 0.5f) * this.CellHeight, this.world.worldView.ObjectsLayer);
+			if (ps != null) {
+				IoManager.AddWidget (ps);
+				Logger.Debug ("Simulator", "CreateParticle", ps.ToString ());
+			}
 		}
 
 		public void CreateParticleOn(string pid, Entity target) {
 			var flip = (target.OutObject.Facing == Facing.RIGHT) ? false : true;
 			var ps = GameFactory.LoadParticleFromTemplate (pid, 0f, 0f, this.world.worldView.ObjectsLayer, flip);
-			target.OutObject.AddParticleSystem (ps);
-			IoManager.AddWidget (ps);
+			if (ps != null) {
+				target.OutObject.AddParticleSystem (ps);
+				IoManager.AddWidget (ps);
+			}
 		}
 
 		public void CreateParticleOn(string pid, string oid) {
 			Entity res;
 			if (this.world.entities.TryGetValue (oid, out res)) {
 				var ps = GameFactory.LoadParticleFromTemplate (pid, 0f, 0f, this.world.worldView.ObjectsLayer);
-				res.OutObject.AddParticleSystem (ps);
-				IoManager.AddWidget (ps);
+				if (ps != null) {
+					res.OutObject.AddParticleSystem (ps);
+					IoManager.AddWidget (ps);
+				}
 			}
 		}
 
@@ -274,9 +336,8 @@ namespace WizardsDuel.Game
 			Logger.Debug ("Simulator", "DestroyObject", "Trying to destroy " + oid);
 			Entity res;
 			if (oid != PLAYER_ID && this.world.entities.TryGetValue (oid, out res)) {
-				//if (res.DeathAnimation == String.Empty) {
-					this.world.worldView.ObjectsLayer.DeleteObject (res.OutObject);
-				//}
+				res.OutObject.RemoveAllParticleSystems ();
+				this.world.worldView.ObjectsLayer.DeleteObject (res.OutObject);
 				this.world.entities.Remove (oid);
 				Logger.Debug ("Simulator", "DestroyObject", "Destroyed " + oid);
 			}
@@ -286,17 +347,41 @@ namespace WizardsDuel.Game
 			this.events.Dispatch ();
 		}
 
+		public List<Entity> GetEnemiesAt(string enemyFaction, int x, int y, int radius = 0) {
+			var res = new List<Entity>();
+			foreach (var e in this.world.entities.Values) {
+				if (
+					e.X >= x - radius && e.X <= x + radius && e.Y >= y - radius && e.Y <= y + radius 
+					&& e.Health > 0 
+					&& e.Faction == enemyFaction
+				) {
+					res.Add (e);
+				}
+			}
+			return res;
+		}
+
 		public string GetObjectAt(int x, int y) {
 			return this.world.GetObjectAt (x, y);
 		}
 
 		public Entity GetObject(string oid) {
 			Entity res;
-			if (this.world.entities.TryGetValue (oid, out res)) {
+			if (oid != null && this.world.entities.TryGetValue (oid, out res)) {
 				return res;
 			} else {
 				return null;
 			}
+		}
+
+		public List<Entity> GetObjectsAt(int x, int y, int radius = 0) {
+			var res = new List<Entity>();
+			foreach (var e in this.world.entities.Values) {
+				if (e.X >= x - radius && e.X <= x + radius && e.Y >= y - radius && e.Y <= y + radius) {
+					res.Add (e);
+				}
+			}
+			return res;
 		}
 
 		public Entity GetPlayer() {
@@ -312,8 +397,26 @@ namespace WizardsDuel.Game
 			get { return events.Initiative; }
 		}
 
-		public void Kill(Entity target) {
+		public bool IsSafeToWalk(Entity walker, int ex, int ey) {
+			var res = this.world.IsWalkable (ex, ey);
+			if (res == true) {
+				var entities = this.world.GetObjectsAt (ex, ey);
+				foreach (var entity in entities) {
+					if (entity.Faction != "NEUTRAL") {
+						return false;
+					} else if (entity.HasTag("TRAP") && entity.HasTag("ACTIVE")) { 
+						if (entity.HasTag ("GROUND") && !walker.HasTag ("FLYING")) {
+							return false;
+						}
+					}
+				}
+			}
+			return res;
+		}
+
+		public void Kill(Entity target, int delayMillis = 0) {
 			Logger.Debug ("Simulator", "Kill", "Trying to kill " + target.ID);
+			target.Kill ();
 			if (target.DeathAnimation == String.Empty) {
 				//CreateParticleAt (SPAWN_PARTICLE, target.X, target.Y);
 				var ps = new ParticleSystem ("DEATH");
@@ -324,14 +427,17 @@ namespace WizardsDuel.Game
 
 				var emitter = new Emitter (ps, 0);
 				//emitter.Offset = new Vector2f (target.DeathRect.Top, target.DeathRect.Left);
-				emitter.ParticleTTL = 1000;
+				emitter.ParticleTTL = 800;
 				emitter.SpawnCount = 64;
 				emitter.SpawnDeltaTime = 50;
+				emitter.StartDelay = 250;
 				emitter.TTL = 90;
 				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2);
+				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2);
+				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 4);
 				emitter.AddAnimator (new GravityAnimation (new Vector2f (0f, 0.0002f)));
-				emitter.AddAnimator (new FadeAnimation (0, 0, 1000));
-				emitter.AddVariator (new GridSpawner (target.DeathRect.Width, target.DeathRect.Height, 2, 2));
+				emitter.AddAnimator (new FadeAnimation (0, 0, 800));
+				emitter.AddVariator (new GridSpawner (target.DeathRect.Width, target.DeathRect.Height, 4, 4));
 				emitter.AddVariator (new BurstSpawner (0.05f));
 				var cps = new ColorPickerSpawner ();
 				cps.AddColor (target.DeathMain);
@@ -342,13 +448,13 @@ namespace WizardsDuel.Game
 
 				//var ps = GameFactory.LoadParticleFromTemplate (pid, target.X * this.CellWidth, target.Y * this.CellHeight, this.world.worldView.ObjectsLayer);
 				IoManager.AddWidget (ps);
-				target.OutObject.AddAnimator (new FadeAnimation (0, 0, 400));
+				target.OutObject.AddAnimator (new FadeAnimation (0, delayMillis, 500));
 			} else {
 				SetAnimation (target, target.DeathAnimation);
 			}
 
 			Logger.Debug ("Simulator", "Cast", "Command to to kill " + target.ID);
-			this.events.WaitAndRun(500, new DestroyEvent (target.ID));
+			this.events.WaitAndRun(delayMillis + 500, new DestroyEvent (target.ID));
 		}
 
 		public void LoadArea() {
@@ -367,6 +473,8 @@ namespace WizardsDuel.Game
 			var playerObject = GetObject (PLAYER_ID);
 			playerObject.AI = new UserAI ();
 			playerObject.HasEnded = true;
+			playerObject.Visible = true;
+			playerObject.OutObject.Color = Color.White;
 			this.world.worldView.ReferenceObject = GetObject (PLAYER_ID).OutObject;
 			//this.AddLight (PLAYER_ID, 300, new Color(254, 250, 235));
 
@@ -388,11 +496,16 @@ namespace WizardsDuel.Game
 					}
 				} while(done != true);
 			}
-
-			foreach (var r in this.world.worldView.dungeon) {
-				//Logger.Info ("Simulator", "LoadArea", "r: " + r + " (" + r.Length.ToString() + ")");
-			}
-			this.world.worldView.AddAnimator(new ColorAnimation(Color.White, Color.Black, 250));
+			this.world.CalculateFoV (playerObject.X, playerObject.Y, 6);
+			this.events.DispatchAll ();
+			this.events.AcceptEvent = true;
+			this.InitializeUserInterface ();
+			// XXX After the user interface is loaded!
+			this.SelectedSkill = 1;
+			Logger.Debug ("Simulator", "LoadArea", "Starting fade at " + IoManager.Time.ToString());
+			IoManager.FadeTo (Color.Transparent, 1500);
+			IoManager.PlayMusic ("intro");
+			IoManager.SetNextMusicLoop ("intro");
 		}
 
 		public Dictionary<string, Entity> ListEnemies() {
@@ -437,6 +550,17 @@ namespace WizardsDuel.Game
 			return this.rng.Next (min, max);
 		}
 
+		public void Select(Entity entity) {
+			if (entity != null && entity.ID != PLAYER_ID) {
+				entity.DamageBar.Level = 1f - (float)entity.Health / (float)entity.MaxHealth;
+				IoManager.AddWidget (entity.OutIcon, TARGET_ICON_ID);
+			}
+		}
+
+		public void Select(int gx, int gy) {
+			Select (GetObject(GetObjectAt (gx, gy)));
+		}
+
 		public void SetAnimation(Entity obj, string animation) {
 			if (obj != null) {
 				obj.OutObject.SetAnimation (animation);
@@ -447,6 +571,36 @@ namespace WizardsDuel.Game
 			var o = this.GetObject (oid);
 			if (o != null) {
 				o.OutObject.SetAnimation (animation);
+			}
+		}
+
+		private int selectedSkill = 0;
+		public int SelectedSkill { 
+			get { return this.selectedSkill; } 
+			set {
+				var i = 0;
+				var selected = false;
+				foreach (var s in GetPlayer().skills) {
+					if (s.Show) {
+						if (++i == value) {
+							s.Border.Color = SELECTED_SKILL_COLOR;
+							this.currentSkill = s;
+							selected = true;
+						} else {
+							s.Border.Color = UNSELECTED_SKILL_COLOR;
+						}
+					}
+				}
+				// if nothing selected just go to the default skill
+				if (selected == false) {
+					foreach (var s in GetPlayer().skills) {
+						if (s.Show) {
+							s.Border.Color = SELECTED_SKILL_COLOR;
+							this.currentSkill = s;
+							return;
+						}
+					}
+				}
 			}
 		}
 
@@ -471,8 +625,13 @@ namespace WizardsDuel.Game
 					res.X = endX;
 					res.Y = endY;
 
-					var ta = new TranslateAnimation (res.OutObject.GetAnimationLength ("SHIFT"), dx * this.CellWidth, dy * this.CellHeight);
-					res.OutObject.AddAnimator (ta);
+					if (res.Visible == true) {
+						var ta = new TranslateAnimation (res.OutObject.GetAnimationLength ("SHIFT"), dx * this.CellWidth, dy * this.CellHeight);
+						res.OutObject.AddAnimator (ta);
+					} else {
+						var ta = new TranslateAnimation (50, dx * this.CellWidth, dy * this.CellHeight);
+						res.OutObject.AddAnimator (ta);
+					}
 
 					//Logger.Debug ("Simulator", "Shift", "Shifting 3 " + ta.deltaX.ToString () + "," + ta.deltaY.ToString ());
 					//Logger.Debug ("Simulator", "Shift", "Moving to " + endX.ToString () + "," + endY.ToString ());
@@ -486,6 +645,8 @@ namespace WizardsDuel.Game
 					// goto new area
 					Logger.Debug ("Simulator", "Shift", "Moving to " + endX.ToString () + "," + endY.ToString () +  " vs " + world.EndCell.ToString());
 					if (oid == PLAYER_ID && world.EndCell.X == endX && world.EndCell.Y == endY) {
+						Logger.Debug ("Simulator", "Shift", "Starting fade out at " + IoManager.Time.ToString());
+						IoManager.FadeTo (Color.Black, 500);
 						events.WaitAndRun (500, new MethodEvent (LoadArea));
 						//LoadArea ();
 					}
@@ -493,7 +654,8 @@ namespace WizardsDuel.Game
 					// something on my path, attack it
 					Logger.Debug ("Simulator", "Shift", "Found entity " + res.ToString () + " at " + endX.ToString () + "," + endY.ToString ());
 					//events.WaitFor (500); // TODO movement animation end
-					this.Attack (oid, bufferId);
+					res.skills[0].OnTarget(res, GetObjectsAt(endX, endY).Find(x => x.Faction != "NUTRAL"));
+					//this.Attack (oid, bufferId, 1, Simulator.DAMAGE_TYPE_PHYSICAL);
 				}
 				//Logger.Debug ("Simulator", "Shift", "Shifting 4");
 			}
@@ -501,6 +663,36 @@ namespace WizardsDuel.Game
 
 		public void ShowGrid(bool show) {
 			world.worldView.EnableGrid (show);
+		}
+
+		/// <summary>
+		/// Tries to apply the skill to the target.
+		/// </summary>
+		/// <returns><c>true</c>, if skill was applied, <c>false</c> otherwise.</returns>
+		/// <param name="skill">Skill.</param>
+		/// <param name="actor">Actor.</param>
+		/// <param name="target">Target, if null the target will be actor</param>
+		/// <param name="gx">Grid x, if < 0 the target will be target</param>
+		/// <param name="gy">Grid y, if < 0 the target will be target</param>
+		public bool TrySkill(Skill skill, Entity actor, Entity target = null, int gx = -1, int gy = -1) {
+			if (skill.RoundsToGo < 1) {
+				if (gx >= 0 && gy >= 0) {
+					skill.OnEmpty (actor, gx, gy);
+				} else if (target != null) {
+					Logger.Debug ("Simulator", "TrySkill", "Trying skill " + skill.Name + " on " + target.ID);
+					skill.OnTarget (actor, target);
+					target.DamageBar.Level = 1f - (float)target.Health / (float)target.MaxHealth;
+					IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);
+				} else {
+					skill.OnSelf (actor);
+				}
+				skill.RoundsToGo = skill.CoolDown;
+				if (skill.DamageBar != null)
+					skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CoolDown;
+				return true;
+			} else {
+				return false;
+			}
 		}
 
 		public void ToggleGrid() {

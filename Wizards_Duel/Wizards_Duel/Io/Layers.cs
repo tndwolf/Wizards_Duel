@@ -260,33 +260,35 @@ namespace WizardsDuel.Io
 				var bufferPosition = new Vector2f (this.GridPadding + this.GridBorder, this.GridPadding + this.GridBorder);
 				bufferPosition.X += this.maskDrawRange.Left * this.cellSize.X;
 				bufferPosition.Y += this.maskDrawRange.Top * this.cellSize.Y;
+				var selectedColor = new Color (255, 208, 127, 127);
+				var losColor = new Color (255, 255, 255, 64);
 				for (var y = this.maskDrawRange.Top; y < this.maskDrawRange.Height + this.maskDrawRange.Top; y++) {
 					for (var x = this.maskDrawRange.Left; x < this.maskDrawRange.Width + this.maskDrawRange.Left; x++) {
 						try {
 							if (this.drawGrid [y, x] == true && this.Selected.X == x && this.Selected.Y == y) {
-								this.tile.FillColor = Color.Green;
+								this.tile.FillColor = selectedColor;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
 							}
 							else if (this.drawGrid [y, x] == true && this.inLosGrid[y, x] == true) {
-								this.tile.FillColor = Color.White;
+								this.tile.FillColor = losColor;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
 							}
-							else if (this.drawGrid [y, x] == true) {
+							/*else if (this.drawGrid [y, x] == true) {
 								this.tile.FillColor = Color.Transparent;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
-							}
+							}*/
 							/*else {
 								this.tile.FillColor = Color.White;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
 							}*/
 						} catch {
-							this.tile.FillColor = Color.Red;
+							/*this.tile.FillColor = Color.Transparent;
 							this.tile.Position = bufferPosition;
-							target.Draw(this.tile, states);
+							target.Draw(this.tile, states);*/
 						}
 						bufferPosition.X += this.cellSize.X;
 					}

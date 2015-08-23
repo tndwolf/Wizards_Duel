@@ -22,19 +22,15 @@ using WizardsDuel.Io;
 namespace WizardsDuel.Game
 {
 	public interface EventObject: IComparable {
-		bool HasEnded {
-			get;
-			set;
-		}
+		bool HasEnded { get; set; }
 
 		/// <summary>
 		/// Gets or sets the current initiative.
 		/// </summary>
 		/// <value>The initiative.</value>
-		int Initiative {
-			get;
-			set;
-		}
+		int Initiative { get; set; }
+
+		bool IsAnimating { get; }
 
 		/// <summary>
 		/// Runs the event. At the end the initiative count must always be updated
@@ -57,6 +53,8 @@ namespace WizardsDuel.Game
 			this.simulator = sim;
 			this.userEvent = null;
 		}
+
+		public bool AcceptEvent { get; set; }
 
 		public void AppendEvent(Event evt) {
 			if (this.eventQueueLocked == false) {
@@ -101,19 +99,45 @@ namespace WizardsDuel.Game
 						//this.Replan (actor);
 					}
 				}*/
-				this.Initiative = actor.Initiative;
-				actor.Run (this.simulator, this);
-				if (this.WaitingForUser) {
-					return;
-				} else {
-					actor.HasEnded = true;
-					this.actorQueue.Sort ();
+				if (!actor.IsAnimating) {
+					this.Initiative = actor.Initiative;
+					actor.Run (this.simulator, this);
+					if (this.WaitingForUser) {
+						return;
+					} else {
+						actor.HasEnded = true;
+						this.actorQueue.Sort ();
+					}
 				}
 				//if (actor.HasEnded) {
 					//this.actorQueue.Sort ();
 					//Logger.Debug ("EventManager", "Dispatch", "Current Queue " + actorQueue.Count.ToString());
 				//}
 			}
+		}
+
+		public void DispatchAll() {
+			// first run events
+			this.eventQueueLocked = true;
+			foreach (var evt in this.eventQueue) {
+				Logger.Debug ("EventManager", "Dispatch", "Processing event " + evt.GetType().ToString());
+				if (evt.Run () == false) {
+					this.eventQueueLocked = false;
+				} else {
+					evt.DeleteMe = true;
+				}
+			}
+			this.eventQueue.RemoveAll (x => x.DeleteMe == true);
+			this.eventQueueLocked = false;
+			// then run actors
+			foreach (var actor in this.actorQueue) {
+				if (actor as World == null) {
+					Logger.Debug ("EventManager", "DispatchAll", "Object " + actor.ToString () + " at initiative " + this.Initiative.ToString ());
+					this.Initiative = actor.Initiative;
+					actor.Run (this.simulator, this);
+				}
+			}
+			this.actorQueue.Sort ();
 		}
 
 		/// <summary>
@@ -146,10 +170,11 @@ namespace WizardsDuel.Game
 			if (this.userEvent != null && simulator.GetPlayer().OutObject.IsInIdle) {
 			//if (this.userEvent != null) {
 				//Logger.Debug ("EventManager", "RunUserEvent", "Running user event " + this.userEvent.ToString());
+				Logger.Debug ("EventManager", "RunUserEvent", "RUNNING EVENT AT INIT " + this.Initiative.ToString ());
 				var player = simulator.GetPlayer();
 				this.userEvent.Run ();
-				simulator.world.CalculateFoV (player.X, player.Y, 6);
 				this.userEvent = null;
+				simulator.world.CalculateFoV (player.X, player.Y, 6);
 				return true;
 			} else {
 				this.ClearUserEvent ();
@@ -158,8 +183,10 @@ namespace WizardsDuel.Game
 		}
 
 		public void SetUserEvent(Event userEvent) {
-			Logger.Info ("EventManager", "SetUserEvent", "Got new user event " + userEvent.ToString());
-			this.userEvent = userEvent;
+			if (AcceptEvent) {
+				Logger.Info ("EventManager", "SetUserEvent", "Got new user event " + userEvent.ToString ());
+				this.userEvent = userEvent;
+			}
 		}
 
 		public void WaitAndRun(int millis, Event evt) {
