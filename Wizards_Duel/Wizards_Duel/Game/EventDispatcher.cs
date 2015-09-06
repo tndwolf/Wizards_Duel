@@ -172,10 +172,17 @@ namespace WizardsDuel.Game
 				//Logger.Debug ("EventManager", "RunUserEvent", "Running user event " + this.userEvent.ToString());
 				Logger.Debug ("EventManager", "RunUserEvent", "RUNNING EVENT AT INIT " + this.Initiative.ToString ());
 				var player = simulator.GetPlayer();
-				this.userEvent.Run ();
-				this.userEvent = null;
-				simulator.world.CalculateFoV (player.X, player.Y, 6);
-				return true;
+				if (this.userEvent.Run () == true) {
+					this.userEvent = null;
+					simulator.world.CalculateFoV (player.X, player.Y, World.FOV_UPDATE_RADIUS - 2);
+					return true;
+				} else {
+					if ((this.userEvent as ClickEvent) != null) {
+						// don't keep clicks in the buffer
+						this.ClearUserEvent ();
+					}
+					return false;
+				}
 			} else {
 				this.ClearUserEvent ();
 				return false;

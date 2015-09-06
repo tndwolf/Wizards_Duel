@@ -34,26 +34,53 @@ namespace WizardsDuel.Game
 
 		public int Range { get; set; }
 
-		public SkillScript OnEmptyScript { get; set; }
+		public SkillBehaviour OnEmptyScript { get; set; }
 
-		public SkillScript OnSelfScript { get; set; }
+		public SkillBehaviour OnSelfScript { get; set; }
 
-		public SkillScript OnTargetScript { get; set; }
+		public SkillBehaviour OnTargetScript { get; set; }
 
-		public void OnEmpty (Entity actor, int gx, int gy) {
-			this.RoundsToGo = this.CoolDown;
-			this.OnEmptyScript.Run(actor, null, gx, gy);
+		public bool OnEmpty (Entity actor, int gx, int gy) {
+			if (this.OnEmptyScript != null) {
+				Logger.Debug ("Skill", "OnEmpty", actor.ID + " " + OnEmptyScript.ToString());
+				if (this.OnEmptyScript.Run (actor, null, gx, gy)) {
+					this.RoundsToGo = this.CoolDown;
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
 		}
 
-		public void OnSelf (Entity actor) {
-			this.RoundsToGo = this.CoolDown;
-			this.OnSelfScript.Run(actor, actor, 0, 0);
+		public bool OnSelf (Entity actor) {
+			if (this.OnSelfScript != null) {
+				Logger.Debug ("Skill", "OnSelf", actor.ID + " " + OnSelfScript.ToString());
+				if (this.OnSelfScript.Run (actor, actor, 0, 0)) {
+					this.RoundsToGo = this.CoolDown;
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
 		}
 
-		public void OnTarget (Entity actor, Entity target) {
-			this.RoundsToGo = this.CoolDown;
-			Logger.Debug ("Skill", "OnTarget", actor.ID + " vs " + target.ID);
-			this.OnTargetScript.Run(actor, target, 0, 0);
+		public bool OnTarget (Entity actor, Entity target) {
+			if (this.OnTargetScript != null) {
+				this.RoundsToGo = this.CoolDown;
+				Logger.Debug ("Skill", "OnTarget", actor.ID + " vs " + target.ID);
+				if (this.OnTargetScript.Run (actor, target, 0, 0)) {
+					this.RoundsToGo = this.CoolDown;
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
 		}
 
 		#region OutputUserInterface
@@ -76,19 +103,20 @@ namespace WizardsDuel.Game
 		#endregion
 	}
 
-	public class SkillScript {
+	public class SkillBehaviour {
 		public string SelfAnimation { get; set; }
 		public string SelfParticle { get; set; }
 		public string TargetAnimation { get; set; }
 		public string TargetParticle { get; set; }
 
-		virtual public void Run (Entity actor, Entity target, int gx, int gy) {
+		virtual public bool Run (Entity actor, Entity target, int gx, int gy) {
 			Logger.Debug ("SkillScript", "Run", "Not doing anything");
+			return true;
 		}
 	}
 
-	public class DamageSkillScript: SkillScript {
-		public DamageSkillScript(int damage = 1, string damageType = Simulator.DAMAGE_TYPE_UNTYPED) {
+	public class DamageBehaviour: SkillBehaviour {
+		public DamageBehaviour(int damage = 1, string damageType = Simulator.DAMAGE_TYPE_UNTYPED) {
 			this.Damage = damage;
 			this.DamageType = damageType;
 		}
@@ -97,44 +125,59 @@ namespace WizardsDuel.Game
 
 		public string DamageType { get; set; }
 
-		override public void Run (Entity actor, Entity target, int gx, int gy) {
-			//Logger.Debug ("DamageSkillScript", "Run", actor.ID + " vs " + target.ID);
-			Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
-			//Logger.Debug ("DamageSkillScript", "Run", "Actor animation: " + this.SelfAnimation);
-			actor.OutObject.SetAnimation (this.SelfAnimation);
-			Simulator.Instance.CreateParticleOn (this.TargetParticle, target);
-			//Logger.Debug ("DamageSkillScript", "Run", "Target animation: " + this.TargetAnimation);
-			target.OutObject.SetAnimation (this.TargetAnimation);
-			var bonusDamage = 0;
-			if (this.DamageType == Simulator.DAMAGE_TYPE_PHYSICAL) {
-				bonusDamage += actor.GetVar ("STRENGTH");
+		override public bool Run (Entity actor, Entity target, int gx, int gy) {
+			if (actor != null && target != null) {
+				//Logger.Debug ("DamageSkillScript", "Run", actor.ID + " vs " + target.ID);
+				Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
+				//Logger.Debug ("DamageSkillScript", "Run", "Actor animation: " + this.SelfAnimation);
+				actor.OutObject.SetAnimation (this.SelfAnimation);
+				Simulator.Instance.CreateParticleOn (this.TargetParticle, target);
+				//Logger.Debug ("DamageSkillScript", "Run", "Target animation: " + this.TargetAnimation);
+				target.OutObject.SetAnimation (this.TargetAnimation);
+				var bonusDamage = 0;
+				if (this.DamageType == Simulator.DAMAGE_TYPE_PHYSICAL) {
+					bonusDamage += actor.GetVar ("STRENGTH");
+				}
+				Simulator.Instance.Attack (actor.ID, target.ID, this.Damage + bonusDamage, this.DamageType);
+				return true;
+			} else {
+				return false;
 			}
-			Simulator.Instance.Attack (actor.ID, target.ID, this.Damage + bonusDamage, this.DamageType);
 		}
 	}
 
-	public class EffectSkillScript: SkillScript {
+	public class EffectSkillScript: SkillBehaviour {
 		public Effect Effect { get; set; }
 
-		override public void Run (Entity actor, Entity target, int gx, int gy) {
-			Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
-			actor.OutObject.SetAnimation (this.SelfAnimation);
-			Simulator.Instance.CreateParticleOn (this.TargetParticle, target);
-			target.OutObject.SetAnimation (this.TargetAnimation);
-			Simulator.Instance.AddEffect (target.ID, this.Effect.Clone);
+		override public bool Run (Entity actor, Entity target, int gx, int gy) {
+			if (target != null) {
+				Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
+				actor.OutObject.SetAnimation (this.SelfAnimation);
+				Simulator.Instance.CreateParticleOn (this.TargetParticle, target);
+				target.OutObject.SetAnimation (this.TargetAnimation);
+				Simulator.Instance.AddEffect (target.ID, this.Effect.Clone);
+				return true;
+			} else {
+				return false;
+			}
 		}
 	}
 
-	public class SpawnSkillScript: SkillScript {
+	public class SpawnBehaviour: SkillBehaviour {
 		public string SpawnTemplateId { get; set; }
 
-		override public void Run (Entity actor, Entity target, int gx, int gy) {
-			Logger.Debug ("SpawnSkillScript", "Run", "Spawning " + SpawnTemplateId);
-			Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
-			Logger.Debug ("SpawnSkillScript", "Run", "Actor animation: " + this.SelfAnimation);
-			actor.OutObject.SetAnimation (this.SelfAnimation);
-			Simulator.Instance.CreateParticleAt (this.TargetParticle, gx, gy);
-			Simulator.Instance.CreateObject (SpawnTemplateId, gx, gy);
+		override public bool Run (Entity actor, Entity target, int gx, int gy) {
+			if (Simulator.Instance.IsSafeToWalk (actor, gx, gy)) {
+				Logger.Debug ("SpawnSkillScript", "Run", "Spawning " + SpawnTemplateId);
+				Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
+				Logger.Debug ("SpawnSkillScript", "Run", "Actor animation: " + this.SelfAnimation);
+				actor.OutObject.SetAnimation (this.SelfAnimation);
+				Simulator.Instance.CreateParticleAt (this.TargetParticle, gx, gy);
+				Simulator.Instance.CreateObject (SpawnTemplateId, gx, gy);
+				return true;
+			} else {
+				return false;
+			}
 		}
 	}
 }

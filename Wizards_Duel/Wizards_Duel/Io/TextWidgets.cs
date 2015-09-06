@@ -33,6 +33,12 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		virtual public bool AlignCenter {
+			set {
+				text.Origin = new Vector2f (text.GetGlobalBounds().Width / 2, text.GetGlobalBounds().Height / 2);
+			}
+		}
+
 		virtual public Color Color {
 			get { return this.text.Color; }
 			set { this.text.Color = value; } 

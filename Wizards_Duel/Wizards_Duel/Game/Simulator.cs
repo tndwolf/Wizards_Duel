@@ -154,11 +154,6 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public void Bleed(Entity target) {
-			CreateParticleOn (BLOOD_PARTICLE, target);
-			this.events.WaitFor (500);
-		}
-
 		public bool CanMove(string oid, int x, int y, bool moveIfPossible = false) {
 			Entity en;
 			bool res = false;
@@ -186,6 +181,13 @@ namespace WizardsDuel.Game
 			bool res = false;
 			try {
 				var en = GetObject(oid);
+				res = this.IsSafeToWalk(en, en.X + dx, en.Y + dy);
+				if (shiftIfPossible && res) {
+					Shift (oid, dx, dy);
+				} else {
+					Logger.Debug ("Simulator", "CanShift", "does not shift " + oid);
+				}
+				/*var en = GetObject(oid);
 				var objectsAtEnd = this.GetObjectsAt(en.X + dx, en.Y + dy);
 				if (this.world.IsValid(en.X + dx, en.Y + dy) && objectsAtEnd.Find(x => x.Static) == null) {
 					//var tile = this.world.GetTile(en.X + dx, en.Y + dy);
@@ -200,49 +202,53 @@ namespace WizardsDuel.Game
 						Logger.Debug ("Simulator", "CanShift", "does not shift " + oid);
 						//Shift (oid, dx, dy);
 					}
-				}
+				}*/
 			} catch (Exception ex) {
 				Logger.Debug ("Simulator", "CanShift", ex.ToString());
 			}
 			return res;
 		}
 
-		public void Click(string oid, int gx, int gy) {
-			Entity res;
-			if (this.world.entities.TryGetValue (oid, out res)) {
-				if (res.OutObject.IsAnimating) {
-					return;
+		public bool Click(string oid, int gx, int gy) {
+			bool res = false;
+			Entity actor;
+			if (this.world.InLos(gx, gy) && this.world.entities.TryGetValue (oid, out actor)) {
+				if (actor.OutObject.IsAnimating) {
+					return false;
 				};
-				//res.OutObject.SetAnimation ("CAST1");
-				var targets = GetObjectsAt(gx, gy);
-				if (targets.Count > 0) {
-					var target = targets.Find (x => x.Faction == "MONSTERS");
-					//if (target == res) {
-					if (targets.Find (x => x == res) != null) {
-						TrySkill (currentSkill, res);
-						//currentSkill.OnSelf (res);
-					} else if (target.Dressing == false) {
-						TrySkill (currentSkill, res, target);
-						/*currentSkill.OnTarget (res, target);
-						target.DamageBar.Level = 1f - (float)target.Health / (float)target.MaxHealth;
-						IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);*/
-					}
+				if (actor.X == gx && actor.Y == gy) {
+					// click on self
+					Logger.Debug ("Simulator", "Click", "Applying skill to self " + oid);
+					res = TrySkill (currentSkill, actor, null);
+					this.SelectedSkill = 1;
 				} else {
-					//CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
-					/*
-					var r = Random (100);
-					if (r < 30) {
-						CreateObject (createdEntityCount.ToString (), "bp_firefly", gx, gy);
-					//*
-					} else if (r < 50) {
-						CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
-					} else if (r < 80) {
-						CreateObject (createdEntityCount.ToString (), "bp_fire_salamander1", gx, gy);
+					var target = GetTargetable(actor, gx, gy);
+					if (target != null) {
+						// something to act upon
+						Logger.Debug ("Simulator", "Click", "Applying skill to " + target.ID);
+						res = TrySkill (currentSkill, actor, target);
+						this.SelectedSkill = 1;
 					} else {
-						CreateObject (createdEntityCount.ToString (), "bp_fire_bronze_thug1", gx, gy);
-					}//*/
+						Logger.Debug ("Simulator", "Click", "Trying skill at " + new {gx, gy}.ToString());
+						res = TrySkill (currentSkill, actor, null, gx, gy);
+						this.SelectedSkill = 1;
+						//Logger.Debug ("Simulator", "Click", "Creating carpet " + CreateObject (createdEntityCount.ToString (), "bp_fire_garg1", gx, gy).ID);
+						/*
+						var r = Random (100);
+						if (r < 30) {
+							CreateObject (createdEntityCount.ToString (), "bp_firefly", gx, gy);
+						//*
+						} else if (r < 50) {
+							CreateObject (createdEntityCount.ToString (), "bp_fire_thug1", gx, gy);
+						} else if (r < 80) {
+							CreateObject (createdEntityCount.ToString (), "bp_fire_salamander1", gx, gy);
+						} else {
+							CreateObject (createdEntityCount.ToString (), "bp_fire_bronze_thug1", gx, gy);
+						}//*/
+					}
 				}
 			}
+			return res;
 		}
 
 		public int CellHeight {
@@ -283,8 +289,9 @@ namespace WizardsDuel.Game
 				this.events.QueueObject (newEntity, InitiativeCount/*createdEntityCount + 10*/);
 				createdEntityCount++;
 				newEntity.AI.OnCreate ();
-				newEntity.Visible = false;
-				newEntity.OutObject.Color = Color.Transparent;
+				newEntity.Visible = this.world.InLos(gx, gy);
+				newEntity.OutObject.Color = newEntity.Visible ? Color.White : Color.Transparent;
+				newEntity.OutObject.SetAnimation ("CREATE");
 
 				if (oid != PLAYER_ID) {
 					newEntity.OutIcon.ScaleX = UI_SCALE;
@@ -347,6 +354,19 @@ namespace WizardsDuel.Game
 			this.events.Dispatch ();
 		}
 
+		public Entity GetAttackable(Entity attacker, int gx, int gy) {
+			var entities = this.world.GetObjectsAt (gx, gy).FindAll(x => x.Faction != attacker.Faction && x.Dressing == false);
+			foreach(var e in entities) {
+				if (e.HasTag("HAZARD") && e.HasTag("ACTIVE")) {
+					// active hazards are not attackable
+					continue;
+				} else {
+					return e;
+				}
+			}
+			return null;
+		}
+
 		public List<Entity> GetEnemiesAt(string enemyFaction, int x, int y, int radius = 0) {
 			var res = new List<Entity>();
 			foreach (var e in this.world.entities.Values) {
@@ -393,22 +413,51 @@ namespace WizardsDuel.Game
 			}
 		}
 
+		public Entity GetTargetable(Entity attacker, int gx, int gy) {
+			var entities = this.world.GetObjectsAt (gx, gy).FindAll(x => x.Dressing == false);
+			foreach(var e in entities) {
+				if (e.HasTag("HAZARD") && e.HasTag("ACTIVE")) {
+					// active hazards are not attackable
+					continue;
+				} else {
+					return e;
+				}
+			}
+			return null;
+		}
+
 		public int InitiativeCount {
 			get { return events.Initiative; }
 		}
 
-		public bool IsSafeToWalk(Entity walker, int ex, int ey) {
+		public bool IsSafeToWalk(Entity walker, int ex, int ey, bool considerHazards = true) {
 			var res = this.world.IsWalkable (ex, ey);
 			if (res == true) {
 				var entities = this.world.GetObjectsAt (ex, ey);
+				// search all entities on the spot
+				// the first condition means that I cannot move
+				// so return false immediately
 				foreach (var entity in entities) {
-					if (entity.Faction != "NEUTRAL") {
+					if (entity.Dressing == false && !entity.HasTag ("HAZARD")) {
+						// if there is something just stop
 						return false;
-					} else if (entity.HasTag("TRAP") && entity.HasTag("ACTIVE")) { 
+					} else if (entity.Dressing && entity.HasTag ("SOLID")) {
+						// usually dressing can be skipped, but this one has the SOLID tag
+						return false;
+					} else if (entity.HasTag ("HAZARD") && entity.HasTag ("ACTIVE") && considerHazards) {
+						// there is an active hazard, check special conditions
 						if (entity.HasTag ("GROUND") && !walker.HasTag ("FLYING")) {
+							// ground hazard and I am not a flyer
 							return false;
 						}
 					}
+					/*if (entity.Faction != "NEUTRAL") {
+						return false;
+					} else if (entity.HasTag ("TRAP") && entity.HasTag ("ACTIVE")) { 
+						if (entity.HasTag ("GROUND") && !walker.HasTag ("FLYING")) {
+							return false;
+						}
+					}*/
 				}
 			}
 			return res;
@@ -417,44 +466,45 @@ namespace WizardsDuel.Game
 		public void Kill(Entity target, int delayMillis = 0) {
 			Logger.Debug ("Simulator", "Kill", "Trying to kill " + target.ID);
 			target.Kill ();
-			if (target.DeathAnimation == String.Empty) {
-				//CreateParticleAt (SPAWN_PARTICLE, target.X, target.Y);
-				var ps = new ParticleSystem ("DEATH");
-				//ps.AddParticle (new Particle ("FX01.png", new IntRect (0, 0, 1, 1)));
-				ps.TTL = 2000;
-				ps.Layer = this.world.worldView.ObjectsLayer;
-				ps.Position = new Vector2f (target.X * this.CellWidth + target.DeathRect.Left, target.Y * this.CellHeight + target.DeathRect.Top);
+			if (target.Visible == true) {
+				if (target.DeathAnimation == String.Empty) {
+					//CreateParticleAt (SPAWN_PARTICLE, target.X, target.Y);
+					var ps = new ParticleSystem ("DEATH");
+					ps.TTL = 2000;
+					ps.Layer = this.world.worldView.ObjectsLayer;
+					ps.Position = new Vector2f (target.X * this.CellWidth + target.DeathRect.Left, target.Y * this.CellHeight + target.DeathRect.Top);
 
-				var emitter = new Emitter (ps, 0);
-				//emitter.Offset = new Vector2f (target.DeathRect.Top, target.DeathRect.Left);
-				emitter.ParticleTTL = 800;
-				emitter.SpawnCount = 64;
-				emitter.SpawnDeltaTime = 50;
-				emitter.StartDelay = 250;
-				emitter.TTL = 90;
-				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2);
-				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 2);
-				emitter.AddParticleTemplate ("FX01.png", 0, 0, 1, 1, 4);
-				emitter.AddAnimator (new GravityAnimation (new Vector2f (0f, 0.0002f)));
-				emitter.AddAnimator (new FadeAnimation (0, 0, 800));
-				emitter.AddVariator (new GridSpawner (target.DeathRect.Width, target.DeathRect.Height, 4, 4));
-				emitter.AddVariator (new BurstSpawner (0.05f));
-				var cps = new ColorPickerSpawner ();
-				cps.AddColor (target.DeathMain);
-				cps.AddColor (target.DeathMain);
-				cps.AddColor (target.DeathSecundary);
-				emitter.AddVariator (cps);
-				ps.AddEmitter (emitter);
+					var emitter = new Emitter (ps, 0);
+					//emitter.Offset = new Vector2f (target.DeathRect.Top, target.DeathRect.Left);
+					emitter.ParticleTTL = 800;
+					emitter.SpawnCount = 64;
+					emitter.SpawnDeltaTime = 50;
+					emitter.StartDelay = 250;
+					emitter.TTL = 90;
+					emitter.AddParticleTemplate ("00_base_pc_fx.png", 576, 0, 1, 1, 2);
+					emitter.AddParticleTemplate ("00_base_pc_fx.png", 576, 0, 1, 1, 2);
+					emitter.AddParticleTemplate ("00_base_pc_fx.png", 576, 0, 1, 1, 4);
+					emitter.AddAnimator (new GravityAnimation (new Vector2f (0f, 0.0002f)));
+					emitter.AddAnimator (new FadeAnimation (0, 0, 800));
+					emitter.AddVariator (new GridSpawner (target.DeathRect.Width, target.DeathRect.Height, 4, 4));
+					emitter.AddVariator (new BurstSpawner (0.05f));
+					var cps = new ColorPickerSpawner ();
+					cps.AddColor (target.DeathMain);
+					cps.AddColor (target.DeathMain);
+					cps.AddColor (target.DeathSecundary);
+					emitter.AddVariator (cps);
+					ps.AddEmitter (emitter);
 
-				//var ps = GameFactory.LoadParticleFromTemplate (pid, target.X * this.CellWidth, target.Y * this.CellHeight, this.world.worldView.ObjectsLayer);
-				IoManager.AddWidget (ps);
-				target.OutObject.AddAnimator (new FadeAnimation (0, delayMillis, 500));
+					//var ps = GameFactory.LoadParticleFromTemplate (pid, target.X * this.CellWidth, target.Y * this.CellHeight, this.world.worldView.ObjectsLayer);
+					IoManager.AddWidget (ps);
+					target.OutObject.AddAnimator (new FadeAnimation (0, delayMillis, 500));
+				} else {
+					SetAnimation (target, target.DeathAnimation);
+				}
+				this.events.WaitAndRun (delayMillis + 500, new DestroyEvent (target.ID));
 			} else {
-				SetAnimation (target, target.DeathAnimation);
+				this.DestroyObject (target.ID);
 			}
-
-			Logger.Debug ("Simulator", "Cast", "Command to to kill " + target.ID);
-			this.events.WaitAndRun(delayMillis + 500, new DestroyEvent (target.ID));
 		}
 
 		public void LoadArea() {
@@ -582,7 +632,7 @@ namespace WizardsDuel.Game
 				var selected = false;
 				foreach (var s in GetPlayer().skills) {
 					if (s.Show) {
-						if (++i == value) {
+						if (++i == value && s.RoundsToGo < 1) {
 							s.Border.Color = SELECTED_SKILL_COLOR;
 							this.currentSkill = s;
 							selected = true;
@@ -619,29 +669,26 @@ namespace WizardsDuel.Game
 				//Logger.Debug ("Simulator", "Shift", "Shifting 2");
 				var endX = res.X + dx;
 				var endY = res.Y + dy;
-				var bufferId = GetObjectAt (endX, endY);
-				if (bufferId == null || GetObject (bufferId).Dressing == true) {
+				//var bufferId = GetObjectAt (endX, endY);
+				//if (bufferId == null || GetObject (bufferId).Dressing == true) {
 					// nothing in the way, move around
 					res.X = endX;
 					res.Y = endY;
-
-					if (res.Visible == true) {
-						var ta = new TranslateAnimation (res.OutObject.GetAnimationLength ("SHIFT"), dx * this.CellWidth, dy * this.CellHeight);
-						res.OutObject.AddAnimator (ta);
-					} else {
-						var ta = new TranslateAnimation (50, dx * this.CellWidth, dy * this.CellHeight);
-						res.OutObject.AddAnimator (ta);
-					}
-
-					//Logger.Debug ("Simulator", "Shift", "Shifting 3 " + ta.deltaX.ToString () + "," + ta.deltaY.ToString ());
-					//Logger.Debug ("Simulator", "Shift", "Moving to " + endX.ToString () + "," + endY.ToString ());
 
 					if (dx < 0) {
 						res.OutObject.Facing = Io.Facing.LEFT;
 					} else if (dx > 0) {
 						res.OutObject.Facing = Io.Facing.RIGHT;
 					}
-					SetAnimation (res, "SHIFT");
+					if (res.Visible == true) {
+						SetAnimation (res, "SHIFT");
+						var ta = new TranslateAnimation (res.OutObject.GetAnimationLength ("SHIFT"), dx * this.CellWidth, dy * this.CellHeight);
+						res.OutObject.AddAnimator (ta);
+					} else {
+						var ta = new TranslateAnimation (250, dx * this.CellWidth, dy * this.CellHeight);
+						res.OutObject.AddAnimator (ta);
+					}
+
 					// goto new area
 					Logger.Debug ("Simulator", "Shift", "Moving to " + endX.ToString () + "," + endY.ToString () +  " vs " + world.EndCell.ToString());
 					if (oid == PLAYER_ID && world.EndCell.X == endX && world.EndCell.Y == endY) {
@@ -650,13 +697,12 @@ namespace WizardsDuel.Game
 						events.WaitAndRun (500, new MethodEvent (LoadArea));
 						//LoadArea ();
 					}
-				} else if (res.Faction != GetObject (bufferId).Faction) {
+				/*} else if (res.Faction != GetObject (bufferId).Faction) {
 					// something on my path, attack it
 					Logger.Debug ("Simulator", "Shift", "Found entity " + res.ToString () + " at " + endX.ToString () + "," + endY.ToString ());
-					//events.WaitFor (500); // TODO movement animation end
 					res.skills[0].OnTarget(res, GetObjectsAt(endX, endY).Find(x => x.Faction != "NUTRAL"));
 					//this.Attack (oid, bufferId, 1, Simulator.DAMAGE_TYPE_PHYSICAL);
-				}
+				}*/
 				//Logger.Debug ("Simulator", "Shift", "Shifting 4");
 			}
 		}
@@ -675,24 +721,28 @@ namespace WizardsDuel.Game
 		/// <param name="gx">Grid x, if < 0 the target will be target</param>
 		/// <param name="gy">Grid y, if < 0 the target will be target</param>
 		public bool TrySkill(Skill skill, Entity actor, Entity target = null, int gx = -1, int gy = -1) {
+			var res = false;
 			if (skill.RoundsToGo < 1) {
 				if (gx >= 0 && gy >= 0) {
-					skill.OnEmpty (actor, gx, gy);
+					res = skill.OnEmpty (actor, gx, gy);
 				} else if (target != null) {
 					Logger.Debug ("Simulator", "TrySkill", "Trying skill " + skill.Name + " on " + target.ID);
-					skill.OnTarget (actor, target);
+					res = skill.OnTarget (actor, target);
 					target.DamageBar.Level = 1f - (float)target.Health / (float)target.MaxHealth;
-					IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);
+					if (target.ID != PLAYER_ID) {
+						IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);
+					}
 				} else {
-					skill.OnSelf (actor);
+					res = skill.OnSelf (actor);
 				}
+			} 
+			if (res == true) {
 				skill.RoundsToGo = skill.CoolDown;
-				if (skill.DamageBar != null)
+				if (skill.DamageBar != null) {
 					skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CoolDown;
-				return true;
-			} else {
-				return false;
+				}
 			}
+			return res;
 		}
 
 		public void ToggleGrid() {

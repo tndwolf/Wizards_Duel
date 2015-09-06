@@ -75,6 +75,7 @@ namespace WizardsDuel.Io
 		protected bool alreadyAnimated = false;
 		public Dictionary<string, AnimationDefinition> animations = new Dictionary<string, AnimationDefinition>();
 		protected List<ParticleSystem> particles = new List<ParticleSystem> ();
+		protected Sprite shadow = null;
 
 		public OutObject(string texture, IntRect srcRect) : base (texture, srcRect) {}
 
@@ -152,13 +153,12 @@ namespace WizardsDuel.Io
 				this.Animate ();
 			}
 			this.alreadyAnimated = false;
-			/*var cs = new CircleShape (1);
-			cs.Position = this.Position;
-			target.Draw (cs, states);
-			cs.Position = new Vector2f(this.Position.X + this.Width, this.Position.Y + Height);
-			target.Draw (cs, states);*/
 			states.Transform.Translate(this.facingOffset);
 			states.Transform.Translate(this.Padding);
+			if (this.shadow != null && this.Alpha > 1) {
+				this.shadow.Position = new Vector2f (this.CenterX - this.facingOffset.X, this.FeetY);
+				target.Draw (this.shadow, states);
+			}
 			target.Draw(this.sprite, states);
 			//Logger.Debug ("OutObject", "Draw", "Drawing at " + this.Position.ToString ());
 			foreach (var ps in this.particles) {
@@ -173,6 +173,7 @@ namespace WizardsDuel.Io
 					this.facing = value;
 					//this.updateFacing = true;
 					this.sprite.Scale = new Vector2f (-this.sprite.Scale.X, this.sprite.Scale.Y);
+					this.shadow.Scale = new Vector2f (-this.shadow.Scale.X, this.shadow.Scale.Y);
 					if (this.Facing == Facing.LEFT) {
 						this.facingOffset = new Vector2f (this.Width, 0f);
 					} else {
@@ -265,6 +266,14 @@ namespace WizardsDuel.Io
 				this.animators.RemoveAll (x => x is SpriteAnimation);
 				anim.SetAnimation (this);
 				this.IsInIdle = (id == this.IdleAnimation);
+			}
+		}
+
+		public Sprite Shadow {
+			get { return this.shadow; }
+			set {
+				value.Position = new Vector2f (this.Position.X, this.FeetY);
+				this.shadow = value;
 			}
 		}
 

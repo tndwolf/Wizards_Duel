@@ -62,30 +62,6 @@ namespace WizardsDuel.Game
 		}
 	}
 
-	public class AttackEvent: TargetedEvent {
-		public AttackEvent (Entity attacker, Entity target, long deltaTime = 0): 
-		base (attacker, target, deltaTime) {}
-
-		override public bool Run() {
-			Logger.Debug ("AttackEvent", "Run", this.Actor.ID + " attacks " + this.Target.ID);
-			this.Actor.OutObject.SetAnimation ("ATTACK");
-			if (this.Actor.X != this.Target.X) {
-				this.Actor.OutObject.Facing = (this.Actor.X < this.Target.X) ? Facing.RIGHT : Facing.LEFT;
-				this.Target.OutObject.Facing = (this.Actor.X < this.Target.X) ? Facing.LEFT : Facing.RIGHT;
-			}
-			var newHealth = this.Target.GetVar (Simulator.HEALTH_VARIABLE, 1) - 1;
-			this.Target.SetVar (Simulator.HEALTH_VARIABLE, newHealth);
-			if (newHealth > 0) {
-				if (this.Target.GetVar ("armor") < 1) {
-					Simulator.Instance.Bleed (Target);
-				}
-			} else {
-				Simulator.Instance.Kill (Target);
-			}
-			return true;
-		}
-	}
-
 	public class KillEvent: ActorEvent {
 		public KillEvent (string oid, long deltaTime = 0): base (oid, deltaTime) {}
 
@@ -105,12 +81,11 @@ namespace WizardsDuel.Game
 		}
 	}
 
-	public class CastEvent: ActorEvent {
-		public CastEvent(string oid, int targetX, int targetY, long deltaTime = 0):
+	public class ClickEvent: ActorEvent {
+		public ClickEvent(string oid, int targetX, int targetY, long deltaTime = 0):
 		base (oid, deltaTime) {
 			this.TargetX = targetX;
 			this.TargetY = targetY;
-			//Logger.Debug ("ShiftEvent", "ShiftEvent", "Added to " + oid);
 		}
 
 		public int TargetX {
@@ -124,9 +99,7 @@ namespace WizardsDuel.Game
 		}
 
 		override public bool Run() {
-			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
-			Simulator.Instance.Click(this.Actor, this.TargetX, this.TargetY);
-			return true;
+			return Simulator.Instance.Click(this.Actor, this.TargetX, this.TargetY);
 		}
 	}
 
@@ -166,11 +139,45 @@ namespace WizardsDuel.Game
 
 		override public bool Run() {
 			//Logger.Debug ("ShiftEvent", "Run", "Shifting " + this.Actor);
-			if (Simulator.Instance.CanShift (this.Actor, this.DX, this.DY, true) == false) {
+			var self = Simulator.Instance.GetObject(this.Actor);
+			var ex = self.X + this.DX;
+			var ey = self.Y + this.DY;
+			if (AttackOrMove (self, ex, ey, this.DX, this.DY)) {
+				return true;
+			} else if (AttackOrMove (self, ex, self.Y, this.DX, 0)) {
+				return true;
+			} else if (AttackOrMove (self, self.X, ey, 0, this.DY)) {
+				return true;
+			}
+			return false;
+			/*if (Simulator.Instance.CanShift (this.Actor, this.DX, this.DY, true) == false) {
 				if (Simulator.Instance.CanShift (this.Actor, this.DX, 0, true) == false) {
 					Simulator.Instance.CanShift (this.Actor, 0, this.DY, true);
 				}
 			}
+			return true;
+			*/
+		}
+
+		private bool AttackOrMove(Entity self, int ex, int ey, int dx, int dy) {
+			var res = false;
+			//var entities = Simulator.Instance.GetObjectsAt (ex, ey);
+			var target = Simulator.Instance.GetAttackable (self, ex, ey);//entities.Find (x => x.Faction != self.Faction && x.Dressing == false);
+			if (target != null) {
+				res = self.skills[0].OnTarget(self, target);
+			} else if (Simulator.Instance.IsSafeToWalk (self, ex, ey, false)) {
+				Simulator.Instance.Shift (this.Actor, dx, dy);
+				res = true;
+			}
+			return res;
+		}
+	}
+
+	public class SkipEvent: ActorEvent {
+		public SkipEvent (string oid, long deltaTime = 0) :
+		base (oid, deltaTime) {}
+
+		override public bool Run() {
 			return true;
 		}
 	}

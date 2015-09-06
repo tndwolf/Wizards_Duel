@@ -210,7 +210,7 @@ namespace WizardsDuel.Io
 			if (e.Button == Mouse.Button.Right) {
 				Simulator.Instance.Select (gx, gy);
 			} else {
-				Simulator.Instance.SetUserEvent (new CastEvent (Simulator.PLAYER_ID, gx, gy));
+				Simulator.Instance.SetUserEvent (new ClickEvent (Simulator.PLAYER_ID, gx, gy));
 			}
 		}
 

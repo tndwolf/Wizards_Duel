@@ -96,24 +96,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
-    <None Include="Assets\alagard_by_pix3m.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Assets\test_floor.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Assets\test_mask_wall.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="Assets\alagard_by_pix3m.ttf" />
+    <None Include="Assets\test_floor.png" />
+    <None Include="Assets\test_mask_wall.png" />
     <None Include="Data\Test_priv.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Assets\test_spritesheets.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Assets\FX01.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="Assets\test_spritesheets.png" />
+    <None Include="Assets\FX01.png" />
     <None Include="Assets\SpriteSheet_FireEnemies01.png" />
     <None Include="Data\TestLevel.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -197,7 +187,7 @@
     <None Include="Assets\munro.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Assets\wizardduel06FIRELEVEL_good02_2.mp3">
+    <None Include="Assets\wizardduel06FIRELEVEL_good02_2.ogg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

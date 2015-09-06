@@ -93,10 +93,15 @@ namespace WizardsDuel.Game
 				howMuch = effect.ProcessDamage (howMuch, type);
 			}
 			this.AI.OnDamage (ref howMuch, type);
+			if (howMuch > 0 && type == Simulator.DAMAGE_TYPE_PHYSICAL) {
+				Simulator.Instance.CreateParticleOn (Simulator.BLOOD_PARTICLE, this);
+			}
 			Logger.Debug ("Entity", "Damage", "After process " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
 			this.Health -= howMuch;
 			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
-			this.DamageBar.Level = 1f - (float)this.Health / (float)this.MaxHealth;
+			if (this.DamageBar != null) {
+				this.DamageBar.Level = 1f - (float)this.Health / (float)this.MaxHealth;
+			}
 			if (this.Health < 1) {
 				Simulator.Instance.Kill (this);
 			}
@@ -119,7 +124,18 @@ namespace WizardsDuel.Game
 		/// Gets or sets a value indicating whether this <see cref="WizardsDuel.Game.Entity"/> is "stopped in time".
 		/// </summary>
 		/// <value><c>true</c> if frozen; otherwise, <c>false</c>.</value>
-		public bool Frozen { get; set; }
+		public bool Frozen { 
+			get { return this.frozen; } 
+			set {
+				this.frozen = value;
+				// XXX this to avoid freezing an object whiel animating
+				// thus blocking the game waiting for its idle cycle
+				// notice thta the animation should be frozen in the current state
+				// the important thing is that the outobject is set to be in idle
+				this.OutObject.SetAnimation (this.OutObject.IdleAnimation);
+			}
+		}
+		private bool frozen;
 
 		public Skill GetPrioritySkillInRange(int range) {
 			// note that skills are sorted by priority when added
@@ -229,7 +245,7 @@ namespace WizardsDuel.Game
 					this.OutObject.AddAnimator (new WizardsDuel.Io.ColorAnimation (Color.Transparent, Color.White, 300));
 				}
 			} else {
-				if (this.Visible == true && this.LastSeen + Simulator.ROUND_LENGTH * 5 < this.Initiative) {
+				if (this.Visible == true && this.LastSeen + Simulator.ROUND_LENGTH < this.Initiative) {
 					this.Visible = false;
 					this.OutObject.AddAnimator (new WizardsDuel.Io.ColorAnimation (Color.White, Color.Transparent, 300));
 				}

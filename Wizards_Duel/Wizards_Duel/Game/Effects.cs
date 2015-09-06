@@ -167,11 +167,11 @@ namespace WizardsDuel.Game
 			Logger.Debug ("GuardEffect", "OnAdded", "Adding effect to " + this.Parent.ID);
 			this.Parent.OutObject.SetAnimation ("CAST1");
 			Simulator.Instance.CreateParticleOn ("p_truce", this.Parent.ID);
-			this.Parent.SetVar ("armor", 1);
+			//this.Parent.SetVar ("armor", 1);
 		}
 
 		override public void OnRemoved() {
-			this.Parent.SetVar ("armor", 0);
+			//this.Parent.SetVar ("armor", 0);
 			Logger.Debug ("GuardEffect", "OnRemoved", "Removing effect to " + this.Parent.ID);
 			Simulator.Instance.RemoveParticle (this.Parent.ID, "p_truce");
 		}
@@ -194,6 +194,37 @@ namespace WizardsDuel.Game
 				this.ID = "GUARD_EFFECT_" + type;
 			}
 		}
+	}
+
+	public class VulnerableEffect: Effect {
+		new public string ID = "VULNERABLE_EFFECT";
+
+		public VulnerableEffect(float multiplier, string toDamageType) {
+			this.Type = toDamageType;
+			this.Multiplier = multiplier;
+			this.Duration = Effect.INFINITE_DURATION;
+		}
+
+		override public Effect Clone {
+			get {
+				var res = new VulnerableEffect (this.Multiplier, this.Type);
+				res.lastInitiative = this.lastInitiative;
+				res.Duration = this.Duration;
+				return res;
+			}
+		}
+
+		public float Multiplier { get; set; }
+
+		override public int ProcessDamage(int howMuch, string type) {
+			if (type == this.Type || this.Type == Simulator.DAMAGE_TYPE_UNTYPED) {
+				return (int)(howMuch * this.Multiplier);
+			} else {
+				return howMuch;
+			}
+		}
+
+		public string Type { get; set; }
 	}
 }
 

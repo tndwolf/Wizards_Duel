@@ -41,6 +41,7 @@ namespace WizardsDuel.Io
 		MOUSE_LEFT,
 		MOUSE_RIGHT,
 		QUIT,
+		SKIP,
 		COUNT
 	}
 
@@ -156,30 +157,36 @@ namespace WizardsDuel.Io
 		}
 
 		private static void CheckKeyboard() {
-			if (Keyboard.IsKeyPressed (Keyboard.Key.A) || Keyboard.IsKeyPressed (Keyboard.Key.Left) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad4)) {
+			if (Keyboard.IsKeyPressed (Keyboard.Key.A) || Keyboard.IsKeyPressed (Keyboard.Key.Left)) {
 				IoManager.inputs.Command = InputCommands.LEFT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.D) || Keyboard.IsKeyPressed (Keyboard.Key.Right) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad6)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.D) || Keyboard.IsKeyPressed (Keyboard.Key.Right)) {
 				IoManager.inputs.Command = InputCommands.RIGHT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.W) || Keyboard.IsKeyPressed (Keyboard.Key.Up) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad8)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.W) || Keyboard.IsKeyPressed (Keyboard.Key.Up)) {
 				IoManager.inputs.Command = InputCommands.UP;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.S) || Keyboard.IsKeyPressed (Keyboard.Key.Down) || Keyboard.IsKeyPressed (Keyboard.Key.Numpad2)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.X) || Keyboard.IsKeyPressed (Keyboard.Key.Down)) {
 				IoManager.inputs.Command = InputCommands.DOWN;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad7)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.Q)) {
 				IoManager.inputs.Command = InputCommands.UP_LEFT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad9)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.E)) {
 				IoManager.inputs.Command = InputCommands.UP_RIGHT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad1)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.Z)) {
 				IoManager.inputs.Command = InputCommands.DOWN_LEFT;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Numpad3)) {
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.C)) {
 				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
 			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.Space)) {
+				IoManager.inputs.Command = InputCommands.SKIP;
+			}
+			/*else if (Keyboard.IsKeyPressed (Keyboard.Key.Tab)) {
+				IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
+			}*/
 		}
 
 		/// <summary>
@@ -321,7 +328,7 @@ namespace WizardsDuel.Io
 		/// <param name="sender">Sender.</param>
 		/// <param name="e">Arguments.</param>
 		private static void KeyPressed(object sender, KeyEventArgs e) {
-			if (e.Code == Keyboard.Key.Left || e.Code == Keyboard.Key.Numpad4) {
+			/*if (e.Code == Keyboard.Key.Left || e.Code == Keyboard.Key.Numpad4) {
 				IoManager.inputs.Command = InputCommands.LEFT;
 			}
 			else if (e.Code == Keyboard.Key.Right || e.Code == Keyboard.Key.Numpad6) {
@@ -345,7 +352,7 @@ namespace WizardsDuel.Io
 			else if (e.Code == Keyboard.Key.Numpad3) {
 				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
 			}
-			else if (e.Code == Keyboard.Key.Tab) {
+			else*/ if (e.Code == Keyboard.Key.Tab) {
 				IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
 			}
 		}
@@ -415,7 +422,7 @@ namespace WizardsDuel.Io
 					var path = IoManager.GetAssetPath(fileName);
 					var mus = new Sound();
 					mus.SoundBuffer = new SoundBuffer(path);
-					mus.Volume = 5;
+					mus.Volume = 15;
 					IoManager.music = new BackgroundMusic(mus, fileName);
 					Logger.Info ("IoManager", "LoadMusic","loaded music " + fileName);
 				}
@@ -463,7 +470,7 @@ namespace WizardsDuel.Io
 				}
 				catch (Exception ex) {
 					// TODO log exception
-					Console.Write(ex.ToString());
+					Logger.Warning ("IoManager", "LoadTexture", "Unable to load " + fileName + ": " + ex.ToString());
 					res = null;
 				}
 			}

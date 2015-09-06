@@ -683,8 +683,8 @@ namespace WizardsDuel.Game
 		private XmlDocument xdoc;
 		private ProbabilityVector<ConstructionBlock> blocks = new ProbabilityVector<ConstructionBlock>();
 		private Dictionary<string, ConstructionBlock> blocksById = new Dictionary<string, ConstructionBlock>();
-		private string endBlock;
-		private string startBlock;
+		private List<string> endBlocks = new List<string>();
+		private List<string> startBlocks = new List<string>();
 
 		public void BuildBlock(XmlNode xblock) {
 			var data = Regex.Replace(xblock.InnerText, @"\s+", "");
@@ -773,6 +773,16 @@ namespace WizardsDuel.Game
 
 		public string DefaultTile { get; set; }
 
+		/// <summary>
+		/// Gets one of the possible end block at random.
+		/// </summary>
+		/// <value>The end block.</value>
+		protected string EndBlock {
+			get {
+				return this.endBlocks [Simulator.Instance.Random (this.endBlocks.Count)];
+			}
+		}
+
 		public string[,] Generate(World res) {
 			// Fill the metadata
 			var enemies = this.xdoc.SelectNodes("//enemy");
@@ -807,6 +817,7 @@ namespace WizardsDuel.Game
 				res.enemyBlueprints.Add (bp);
 			}
 			res.AI = new AreaAI ();
+			res.AI.progression = XmlUtilities.GetIntArray(this.xdoc.SelectSingleNode("//enemies"), "threatProgression");
 
 			// Generate the map
 			BufferLevel level = null;
@@ -815,7 +826,7 @@ namespace WizardsDuel.Game
 				level = new BufferLevel (MaxWidth, MaxHeight, this.DefaultTile);
 				level.CloseTile = this.DefaultTile;
 				// Place the first block
-				var last = this.blocksById [this.startBlock];
+				var last = this.blocksById [this.StartBlock];
 				var x = Simulator.Instance.Random (MaxWidth, 1);
 				var y = Simulator.Instance.Random (MaxHeight, 1);
 				level.PlaceBlock (last, x, y);
@@ -826,7 +837,7 @@ namespace WizardsDuel.Game
 						break;
 					}
 				}
-				if (level != null && level.AddBlock (this.blocksById[this.endBlock]) == false) {
+				if (level != null && level.AddBlock (this.blocksById[this.EndBlock]) == false) {
 					level = null;
 					Logger.Debug ("WorldFactory", "Generate", "Invalid level, regenerating...");
 				}
@@ -861,8 +872,8 @@ namespace WizardsDuel.Game
 				this.MaxWidth = XmlUtilities.GetInt(xlevel, "maxWidth");
 				this.MaxHeight = XmlUtilities.GetInt(xlevel, "maxHeight");
 				this.MinArea = XmlUtilities.GetInt(xlevel, "minArea");
-				this.endBlock = XmlUtilities.GetString(xlevel, "end");
-				this.startBlock = XmlUtilities.GetString(xlevel, "start");
+				this.endBlocks = new List<string>(XmlUtilities.GetStringArray(xlevel, "end"));
+				this.startBlocks = new List<string>(XmlUtilities.GetStringArray(xlevel, "start"));
 				var xblocks = this.xdoc.SelectNodes("//block");
 				for (var i = 0; i < xblocks.Count; i++) {
 					this.BuildBlock(xblocks[i]);
@@ -879,6 +890,16 @@ namespace WizardsDuel.Game
 		protected int MaxWidth { get; set; }
 
 		protected int MinArea { get; set; }
+
+		/// <summary>
+		/// Gets one of the possible start block at random.
+		/// </summary>
+		/// <value>The start block.</value>
+		protected string StartBlock {
+			get {
+				return this.startBlocks [Simulator.Instance.Random (this.startBlocks.Count)];
+			}
+		}
 	}
 }
 

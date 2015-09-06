@@ -260,8 +260,11 @@ namespace WizardsDuel.Io
 				var bufferPosition = new Vector2f (this.GridPadding + this.GridBorder, this.GridPadding + this.GridBorder);
 				bufferPosition.X += this.maskDrawRange.Left * this.cellSize.X;
 				bufferPosition.Y += this.maskDrawRange.Top * this.cellSize.Y;
-				var selectedColor = new Color (255, 208, 127, 127);
+				var selectedColor = new Color (255, 255, 64, 127);
 				var losColor = new Color (255, 255, 255, 64);
+				var enColor = new Color (255, 64, 64, 127);
+				var playerColor = new Color (64, 255, 64, 127);
+				var player = WizardsDuel.Game.Simulator.Instance.GetPlayer ();
 				for (var y = this.maskDrawRange.Top; y < this.maskDrawRange.Height + this.maskDrawRange.Top; y++) {
 					for (var x = this.maskDrawRange.Left; x < this.maskDrawRange.Width + this.maskDrawRange.Left; x++) {
 						try {
@@ -270,21 +273,16 @@ namespace WizardsDuel.Io
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
 							}
-							else if (this.drawGrid [y, x] == true && this.inLosGrid[y, x] == true) {
-								this.tile.FillColor = losColor;
+							else if (player.X == x && player.Y == y) {
+								this.tile.FillColor = playerColor;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
 							}
-							/*else if (this.drawGrid [y, x] == true) {
-								this.tile.FillColor = Color.Transparent;
+							else if (this.drawGrid [y, x] == true && this.inLosGrid[y, x] == true) {
+								this.tile.FillColor = (WizardsDuel.Game.Simulator.Instance.GetTargetable(player, x, y) != null)? enColor : losColor;
 								this.tile.Position = bufferPosition;
 								target.Draw(this.tile, states);
-							}*/
-							/*else {
-								this.tile.FillColor = Color.White;
-								this.tile.Position = bufferPosition;
-								target.Draw(this.tile, states);
-							}*/
+							}
 						} catch {
 							/*this.tile.FillColor = Color.Transparent;
 							this.tile.Position = bufferPosition;

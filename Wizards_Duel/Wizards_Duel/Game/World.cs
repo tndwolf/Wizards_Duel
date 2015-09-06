@@ -57,7 +57,7 @@ namespace WizardsDuel.Game
 
 	public class World : EventObject {
 		public const string DEFAULT_TILE_ID = "DEFAULT";
-		public const int FOV_UPDATE_RADIUS = 10;
+		public const int FOV_UPDATE_RADIUS = 7;
 
 		internal List<EnemyBlueprint> enemyBlueprints = new List<EnemyBlueprint>();
 		internal Dictionary<string, Entity> entities = new Dictionary<string, Entity>();
@@ -112,7 +112,7 @@ namespace WizardsDuel.Game
 					if (IsValid (x, y)) {
 						var cell = this.GetTile (x, y);
 						//cell.InLos = tmp;//CalculateLoS (cx, cy, x, y, sightRadius);
-						cell.InLos = testInLoS(cx, cy, x, y);
+						cell.InLos = testInLoS(cx, cy, x, y, sightRadius);
 						this.worldView.GridLayer.SetInLos(x, y, cell.InLos);
 					}
 				}
@@ -129,6 +129,7 @@ namespace WizardsDuel.Game
 
 			var x = x0;
 			var y = y0;
+			int i = 0;
 			if (dx > dy) {
 				var err = dx / 2f;
 				while (x != x1) {
@@ -140,6 +141,7 @@ namespace WizardsDuel.Game
 						err += dx;
 					}
 					x += sx;
+					i++;
 				}
 			} else {
 				var err = dy / 2f;
@@ -152,10 +154,14 @@ namespace WizardsDuel.Game
 						err += dy;
 					}
 					y += sy;
+					i++;
 				}
 			}
-			// check x,y
-			return true;
+			if (i > maxRadius) {
+				return false;
+			} else {
+				return true;
+			}
 		}
 
 

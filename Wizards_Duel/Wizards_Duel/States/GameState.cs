@@ -100,6 +100,8 @@ namespace WizardsDuel.States
 				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, -1, -1));
 			} else if (inputs.Command == InputCommands.DOWN_LEFT) {
 				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, -1, 1));
+			} else if (inputs.Command == InputCommands.SKIP) {
+				Simulator.Instance.SetUserEvent (new SkipEvent (Simulator.PLAYER_ID));
 			} else if (inputs.Command == InputCommands.TOGGLE_GRID) {
 				Simulator.Instance.ToggleGrid ();
 			} else {
@@ -151,7 +153,8 @@ namespace WizardsDuel.States
 			IoManager.Clear ();
 			IoManager.AddWidget(new Icon("0startscreen01_big.jpg", new IntRect(0,0,1280,720)));
 			var label = new Label ("Click to start", 32, "munro.ttf");
-			label.Position = new SFML.Window.Vector2f (524, IoManager.Height - 64);
+			label.AlignCenter = true;
+			label.Position = new SFML.Window.Vector2f (IoManager.Width/2, IoManager.Height - 64);
 			IoManager.AddWidget (label);
 		}
 

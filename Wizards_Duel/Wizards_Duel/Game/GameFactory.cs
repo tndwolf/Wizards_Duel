@@ -91,6 +91,9 @@ namespace WizardsDuel.Game
 				res.Dressing = XmlUtilities.GetBool(properties, "dressing");
 				var ai = XmlUtilities.GetString(properties, "ai");
 				switch (ai) {
+				case ArtificialIntelligence.ICE:
+					res.AI = new IceAI();
+					break;
 				case ArtificialIntelligence.LAVA_EMITTER:
 					res.AI = new LavaEmitterAI();
 					break;
@@ -155,6 +158,18 @@ namespace WizardsDuel.Game
 				res.OutObject.LightColor = XmlUtilities.GetColor(outTemplate, "lightColor", Color.White);
 				res.OutObject.LightRadius = XmlUtilities.GetInt(outTemplate, "lightRadius");
 				res.OutObject.ZIndex = XmlUtilities.GetInt(outTemplate, "zIndex");
+
+				var shadow = XmlUtilities.GetString(outTemplate, "shadow", String.Empty);
+				if (shadow != String.Empty) {
+					var shadowWidth = 24;
+					var shadowHeight = (int)(shadowWidth/3);
+					var shadowSprite = new Sprite(IoManager.LoadTexture("00_base_pc_fx.png"), new IntRect(576, 40, shadowWidth, shadowHeight));
+					shadowSprite.Origin = new Vector2f(shadowWidth/2, shadowHeight/2);
+					shadowSprite.Color = new Color(0, 0, 0, 96);
+					shadowSprite.Scale = new Vector2f(2f, 2f);
+					res.OutObject.Shadow = shadowSprite;
+					//Simulator.Instance.CreateParticleOn(shadow,res);
+				}
 
 				var animations = outTemplate.SelectNodes("./animation");
 				for (int a = 0; a < animations.Count; a++) {
@@ -383,15 +398,15 @@ namespace WizardsDuel.Game
 				var type = XmlUtilities.GetString (scripts [s], "type");
 				switch (type) {
 				case "ON_EMPTY":
-					res.OnEmptyScript = LoadSkillScript (scripts [s]);
+					res.OnEmptyScript = LoadSkillBehaviour (scripts [s]);
 					break;
 
 				case "ON_SELF":
-					res.OnSelfScript = LoadSkillScript (scripts [s]);
+					res.OnSelfScript = LoadSkillBehaviour (scripts [s]);
 					break;
 
 				case "ON_TARGET":
-					res.OnTargetScript = LoadSkillScript (scripts [s]);
+					res.OnTargetScript = LoadSkillBehaviour (scripts [s]);
 					break;
 
 				default:
@@ -401,14 +416,14 @@ namespace WizardsDuel.Game
 			return res;
 		}
 
-		static public SkillScript LoadSkillScript(XmlNode scriptRoot) {
-			SkillScript res;
+		static public SkillBehaviour LoadSkillBehaviour(XmlNode scriptRoot) {
+			SkillBehaviour res;
 			var script = XmlUtilities.GetStringArray (scriptRoot, "script", true);
 			Logger.Debug ("GameFactory", "LoadSkillScript", script.ToString ());
 			switch (script[0]) {
 			case "DAMAGE":
-				res = new DamageSkillScript ();
-				var dtmp = res as DamageSkillScript;
+				res = new DamageBehaviour ();
+				var dtmp = res as DamageBehaviour;
 				dtmp.Damage = int.Parse (script [1]);
 				dtmp.DamageType = script [2];
 				break;
@@ -420,13 +435,13 @@ namespace WizardsDuel.Game
 				break;
 
 			case "SPAWN":
-				res = new SpawnSkillScript ();
-				var stmp = res as SpawnSkillScript;
+				res = new SpawnBehaviour ();
+				var stmp = res as SpawnBehaviour;
 				stmp.SpawnTemplateId = script [1];
 				break;
 
 			default:
-				res = new SkillScript ();
+				res = new SkillBehaviour ();
 				break;
 			}
 			res.SelfAnimation = XmlUtilities.GetString (scriptRoot, "selfAnimation");
@@ -456,6 +471,11 @@ namespace WizardsDuel.Game
 				res = new GuardEffect ();
 				var gres = res as GuardEffect;
 				gres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
+				gres.Strength = int.Parse (script [3]);
+				break;
+
+			case "VULNERABLE":
+				res = new VulnerableEffect (float.Parse (script [3]), script[2]);
 				break;
 
 			default:

@@ -30,6 +30,7 @@ namespace WizardsDuel
 				Logger.Blacklist("AddLayer");
 				Logger.Blacklist("AddRule");
 				Logger.Blacklist("AreaAI");
+				Logger.Blacklist("BackgroundMusic");
 				Logger.Blacklist("CalculateLoS");
 				Logger.Blacklist("CanShift");
 				Logger.Blacklist("Effect");
@@ -37,9 +38,11 @@ namespace WizardsDuel
 				Logger.Blacklist("EventManager");
 				Logger.Blacklist("GameFactory");
 				Logger.Blacklist("IoManager");
+				Logger.Blacklist("LavaAI");
 				Logger.Blacklist("LoadTilemask");
 				Logger.Blacklist("LoadWorldView");
 				Logger.Blacklist("Main");
+				Logger.Blacklist("MeleeAI");
 				Logger.Blacklist("OnRound");
 				Logger.Blacklist("OutObject");
 				Logger.Blacklist("Run");

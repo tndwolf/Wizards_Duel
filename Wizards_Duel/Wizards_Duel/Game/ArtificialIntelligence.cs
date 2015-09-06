@@ -19,13 +19,14 @@ using WizardsDuel.Game;
 using System.Collections.Generic;
 using SFML.Window;
 using WizardsDuel.Utils;
+using WizardsDuel.Io;
 
 namespace WizardsDuel.Game
 {
 	public class AreaAI: ArtificialIntelligence {
 		new public World Parent { get; set; }
 
-		private int[] progression = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 5, 0, 0, 0, 0 };
+		internal int[] progression = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 5, 0, 0, 0, 0 };
 		private int progressionIndex = 0;
 		public int CurrentThreatLevel { get; set; }
 		public int ThreatLevel { get; set; }
@@ -70,7 +71,7 @@ namespace WizardsDuel.Game
 					var smaxX = p.X + Parent.lastSightRadius;
 					var smaxY = p.Y + Parent.lastSightRadius;
 					var possibleCells = new List<Vector2i> ();
-					Logger.Info ("AreaAI", "OnRound", "Spawn center " + new {p.X, p.Y}.ToString());
+					//Logger.Info ("AreaAI", "OnRound", "Spawn center " + new {p.X, p.Y}.ToString());
 					for(int y = minY; y < maxY; y++) {
 						for(int x = minX; x < maxX; x++) {
 							// must spawn outside sight
@@ -79,7 +80,7 @@ namespace WizardsDuel.Game
 								continue;
 							}
 							if (sim.world.IsWalkable (x, y) && sim.GetObjectAt(x, y) == null) {
-								Logger.Info ("AreaAI", "OnRound", "Adding possible cell " + new {x, y}.ToString());
+								//Logger.Info ("AreaAI", "OnRound", "Adding possible cell " + new {x, y}.ToString());
 								possibleCells.Add (new Vector2i (x, y));
 							}
 						}
@@ -91,15 +92,35 @@ namespace WizardsDuel.Game
 							possibleCells.Remove (position);
 							sim.CreateObject (e.TemplateID, position.X, position.Y);
 							this.CurrentThreatLevel += e.ThreatLevel;
-							Logger.Info ("AreaAI", "OnRound", "Created object " + e.TemplateID + " at " + position.ToString());
+							//Logger.Info ("AreaAI", "OnRound", "Created object " + e.TemplateID + " at " + position.ToString());
 						}
 					}
 				}
+			}
+
+			this.UpdateMusic ();
+		}
+
+		virtual public void UpdateMusic() {
+			var threat = 0;
+			foreach (var e in Simulator.Instance.world.entities.Values) {
+				threat += (e.Visible == true && e.Dressing == false && e.Static == false) ? 1 : 0;
+			}
+			if (threat == 1) {
+				Logger.Debug ("AreaAI", "UpdateMusic", "threath level low = " + threat.ToString());
+				IoManager.SetNextMusicLoop ("combat1");
+			} else if (threat > 1) {
+				Logger.Debug ("AreaAI", "UpdateMusic", "threath level high = " + threat.ToString());
+				IoManager.SetNextMusicLoop ("combat2");
+			} else {
+				Logger.Debug ("AreaAI", "UpdateMusic", "threath level none = " + threat.ToString());
+				IoManager.SetNextMusicLoop ("intro");
 			}
 		}
 	}
 
 	public class ArtificialIntelligence {
+		public const string ICE = "ICE";
 		public const string LAVA = "LAVA";
 		public const string LAVA_EMITTER = "LAVA_EMITTER";
 		public const string MELEE = "MELEE";
@@ -162,7 +183,7 @@ namespace WizardsDuel.Game
 		override public void OnRound () {
 			var range = this.Parent.CurrentActiveRange;
 			var skill = this.Parent.GetPrioritySkillInRange(range);
-			Logger.Debug ("MeleeAI", "OnRound", "Using skill " + skill.Name + " searching in range " + range.ToString());
+			//Logger.Debug ("MeleeAI", "OnRound", "Using skill " + skill.Name + " searching in range " + range.ToString());
 			var enemiesInRange = Simulator.Instance.GetEnemiesAt ("PLAYER", this.Parent.X, this.Parent.Y, range);
 			if (enemiesInRange.Count > 0 && skill != null) {
 				Logger.Debug ("MeleeAI", "OnRound", "Trying skill " + skill.Name + " on " + enemiesInRange [0].ID);
@@ -176,6 +197,7 @@ namespace WizardsDuel.Game
 					var ey = this.Parent.Y + dy;
 					var world = Simulator.Instance.world;
 					if (Simulator.Instance.IsSafeToWalk (this.Parent,ex, ey)) {
+						Logger.Debug ("MeleeAI", "OnRound", "Moving " + Parent.ID.ToString());
 						Simulator.Instance.Shift (this.Parent.ID, dx, dy);
 					} else if (dx == 0) {
 						ex -= 1;
@@ -200,6 +222,22 @@ namespace WizardsDuel.Game
 						dy = Simulator.Instance.Random (3) - 1;
 						Simulator.Instance.CanShift (this.Parent.ID, dx, dy, true);
 					}
+				}
+			}
+		}
+	}
+
+	public class IceAI: ArtificialIntelligence {
+		override public void OnCreate() {
+			var entitiesOverMe = Simulator.Instance.GetObjectsAt (this.Parent.X, this.Parent.Y);
+			foreach (var entity in entitiesOverMe) {
+				if (entity.HasTag ("HAZARD") && entity.HasTag ("GROUND")) {
+					entity.Damage (5, Simulator.DAMAGE_TYPE_COLD);
+					/*if (entity.HasTag ("ACTIVE") && entity.HasTag ("FIRE")) {
+						
+					} else {
+						Simulator.Instance.Kill (entity);
+					}*/
 				}
 			}
 		}
@@ -373,6 +411,44 @@ namespace WizardsDuel.Game
 	public class UserAI: ArtificialIntelligence {
 		override public void OnRound () {
 			Simulator.Instance.events.WaitingForUser = !Simulator.Instance.events.RunUserEvent ();
+		}
+
+		override public void OnDeath () {
+			var position = new Vector2f (IoManager.Width / 2, IoManager.Height / 2 - 100);
+			Logger.Info ("UserAI", "OnDeath", "PLAYER is Dead");
+			var label = new Label ("YOU HAVE FALLEN", 48);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.Red;
+			label.Position = position;
+			IoManager.AddWidget (label);
+
+			label = new Label ("Thank you for playing this Alpha release", 32);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.White;
+			position.Y += 200;
+			label.Position = Parent.OutObject.Position;
+			IoManager.AddWidget (label);
+
+			label = new Label ("Lots of things will change for the final release", 32);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.White;
+			position.Y += 40;
+			label.Position = position;
+			IoManager.AddWidget (label);
+
+			label = new Label ("But we would gladly accept your comments and critiques!", 32);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.White;
+			position.Y += 40;
+			label.Position = position;
+			IoManager.AddWidget (label);
+
+			label = new Label ("Contact us on http://wizardsduelgame.wordpress.com!", 32);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.White;
+			position.Y += 40;
+			label.Position = position;
+			IoManager.AddWidget (label);
 		}
 	}
 
