@@ -2,6 +2,7 @@
 using SFML.Graphics;
 using WizardsDuel.Utils;
 using WizardsDuel.Io;
+using System.Collections.Generic;
 
 namespace WizardsDuel.Game
 {
@@ -164,7 +165,12 @@ namespace WizardsDuel.Game
 	}
 
 	public class SpawnBehaviour: SkillBehaviour {
-		public string SpawnTemplateId { get; set; }
+		internal List<string> templateIds = new List<string> ();
+
+		public string SpawnTemplateId { 
+			get { return this.templateIds [Simulator.Instance.Random (this.templateIds.Count)]; }
+			set { this.templateIds.Add (value); }
+		}
 
 		override public bool Run (Entity actor, Entity target, int gx, int gy) {
 			if (Simulator.Instance.IsSafeToWalk (actor, gx, gy)) {

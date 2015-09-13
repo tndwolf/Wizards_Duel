@@ -184,7 +184,7 @@ namespace WizardsDuel.Io
 		}
 
 		public float FeetY {
-			get { return this.Y + this.Height + this.Padding.Y; }
+			get { return this.Y + this.Height - this.Padding.Y; }
 			set { this.Y = value - this.Height - this.Padding.Y; }
 		}
 

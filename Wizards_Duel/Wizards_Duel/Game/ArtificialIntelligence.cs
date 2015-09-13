@@ -24,97 +24,102 @@ using WizardsDuel.Io;
 namespace WizardsDuel.Game
 {
 	public class AreaAI: ArtificialIntelligence {
+		internal List<EnemyBlueprint> enemyBlueprints = new List<EnemyBlueprint>();
+		internal List<MusicLoop> MusicLoops = new List<MusicLoop>();
 		new public World Parent { get; set; }
 
 		internal int[] progression = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 5, 0, 0, 0, 0 };
 		private int progressionIndex = 0;
+		public bool AlwaysIncreaseThreat { get; set; }
 		public int CurrentThreatLevel { get; set; }
-		public int ThreatLevel { get; set; }
 		public int MaxThreatLevel { get; set; }
+		public int ThreatLevel { get; set; }
+		public int VisibleThreatLevel { get; set; }
 
 		override public void OnRound () {
-			this.ThreatLevel += this.progression[this.progressionIndex];
-			//this.ThreatLevel = Math.Max(this.ThreatLevel, this.MaxThreatLevel);
-			this.progressionIndex++;
-			this.progressionIndex %= this.progression.Length;
-			var deltaThreat = this.ThreatLevel - this.CurrentThreatLevel;
-			if (deltaThreat > 0) {
-				Logger.Info ("AreaAI", "OnRound", "Threat " + deltaThreat.ToString() + " spawning");
-				var sim = Simulator.Instance;
-				// let's find a group of enemies at this threat level
-				var encounter = new List<EnemyBlueprint>();
-				var encounterLevel = 0;
-				var i = 0;
-				var MAX_ITER = 5;
-				while (encounterLevel < deltaThreat) {
-					var e = Parent.enemyBlueprints [sim.Random (Parent.enemyBlueprints.Count)];
-					if (encounterLevel + e.ThreatLevel <= deltaThreat) {
-						encounterLevel += e.ThreatLevel;
-						encounter.Add (e);
-						continue;
-					}
-					if (i++ >= MAX_ITER) {
-						Logger.Info ("AreaAI", "OnRound", "Unable to generate correct group");
-						return;
-					}
-				}
-
-				if (encounter.Count > 0) {
-					// find a place where to spawn them
-					var p = sim.GetPlayer();
-					var minX = p.X - World.FOV_UPDATE_RADIUS;
-					var minY = p.Y - World.FOV_UPDATE_RADIUS;
-					var maxX = p.X + World.FOV_UPDATE_RADIUS;
-					var maxY = p.Y + World.FOV_UPDATE_RADIUS;
-					var sminX = p.X - Parent.lastSightRadius;
-					var sminY = p.Y - Parent.lastSightRadius;
-					var smaxX = p.X + Parent.lastSightRadius;
-					var smaxY = p.Y + Parent.lastSightRadius;
-					var possibleCells = new List<Vector2i> ();
-					//Logger.Info ("AreaAI", "OnRound", "Spawn center " + new {p.X, p.Y}.ToString());
-					for(int y = minY; y < maxY; y++) {
-						for(int x = minX; x < maxX; x++) {
-							// must spawn outside sight
-							// TODO if not specified differently?
-							if (x > sminX && x < smaxX && y > sminY && y < smaxY) {
-								continue;
-							}
-							if (sim.world.IsWalkable (x, y) && sim.GetObjectAt(x, y) == null) {
-								//Logger.Info ("AreaAI", "OnRound", "Adding possible cell " + new {x, y}.ToString());
-								possibleCells.Add (new Vector2i (x, y));
-							}
+			if (this.VisibleThreatLevel < 1 || this.AlwaysIncreaseThreat) {
+				this.ThreatLevel += this.progression [this.progressionIndex];
+				this.ThreatLevel = Math.Min (this.ThreatLevel, this.MaxThreatLevel);
+				this.progressionIndex++;
+				this.progressionIndex %= this.progression.Length;
+				var deltaThreat = this.ThreatLevel - this.CurrentThreatLevel;
+				if (deltaThreat > 0) {
+					Logger.Info ("AreaAI", "OnRound", "Threat " + deltaThreat.ToString () + " spawning");
+					var sim = Simulator.Instance;
+					// let's find a group of enemies at this threat level
+					var encounter = new List<EnemyBlueprint> ();
+					var encounterLevel = 0;
+					var i = 0;
+					var MAX_ITER = 5;
+					while (encounterLevel < deltaThreat) {
+						var e = this.enemyBlueprints [sim.Random (this.enemyBlueprints.Count)];
+						if (encounterLevel + e.ThreatLevel <= deltaThreat) {
+							encounterLevel += e.ThreatLevel;
+							encounter.Add (e);
+							continue;
+						}
+						if (i++ >= MAX_ITER) {
+							Logger.Info ("AreaAI", "OnRound", "Unable to generate correct group");
+							return;
 						}
 					}
-					// finally spawn
-					foreach (var e in encounter) {
-						if (possibleCells.Count > 0) {
-							var position = possibleCells [sim.Random (possibleCells.Count)];
-							possibleCells.Remove (position);
-							sim.CreateObject (e.TemplateID, position.X, position.Y);
-							this.CurrentThreatLevel += e.ThreatLevel;
-							//Logger.Info ("AreaAI", "OnRound", "Created object " + e.TemplateID + " at " + position.ToString());
+
+					if (encounter.Count > 0) {
+						// find a place where to spawn them
+						var p = sim.GetPlayer ();
+						var minX = p.X - World.FOV_UPDATE_RADIUS;
+						var minY = p.Y - World.FOV_UPDATE_RADIUS;
+						var maxX = p.X + World.FOV_UPDATE_RADIUS;
+						var maxY = p.Y + World.FOV_UPDATE_RADIUS;
+						var sminX = p.X - Parent.lastSightRadius;
+						var sminY = p.Y - Parent.lastSightRadius;
+						var smaxX = p.X + Parent.lastSightRadius;
+						var smaxY = p.Y + Parent.lastSightRadius;
+						var possibleCells = new List<Vector2i> ();
+						//Logger.Info ("AreaAI", "OnRound", "Spawn center " + new {p.X, p.Y}.ToString());
+						for (int y = minY; y < maxY; y++) {
+							for (int x = minX; x < maxX; x++) {
+								// must spawn outside sight
+								// TODO if not specified differently?
+								if (x > sminX && x < smaxX && y > sminY && y < smaxY) {
+									continue;
+								}
+								if (x > 3 && y > 3 && x < sim.world.GridWidth - 2 && y < sim.world.GridHeight - 2 &&
+									sim.world.IsWalkable (x, y) && 
+									sim.GetObjectAt (x, y) == null) {
+									//Logger.Info ("AreaAI", "OnRound", "Adding possible cell " + new {x, y}.ToString());
+									possibleCells.Add (new Vector2i (x, y));
+								}
+							}
+						}
+						// finally spawn
+						foreach (var e in encounter) {
+							if (possibleCells.Count > 0) {
+								var position = possibleCells [sim.Random (possibleCells.Count)];
+								possibleCells.Remove (position);
+								sim.CreateObject (e.TemplateID, position.X, position.Y);
+								this.CurrentThreatLevel += e.ThreatLevel;
+								//Logger.Info ("AreaAI", "OnRound", "Created object " + e.TemplateID + " at " + position.ToString());
+							}
 						}
 					}
 				}
 			}
-
 			this.UpdateMusic ();
 		}
 
 		virtual public void UpdateMusic() {
-			var threat = 0;
+			this.VisibleThreatLevel = 0;
 			foreach (var e in Simulator.Instance.world.entities.Values) {
-				threat += (e.Visible == true && e.Dressing == false && e.Static == false) ? 1 : 0;
+				this.VisibleThreatLevel += (e.Visible == true && e.Dressing == false) ? e.Threat : 0;
 			}
-			if (threat == 1) {
-				Logger.Debug ("AreaAI", "UpdateMusic", "threath level low = " + threat.ToString());
-				IoManager.SetNextMusicLoop ("combat1");
-			} else if (threat > 1) {
-				Logger.Debug ("AreaAI", "UpdateMusic", "threath level high = " + threat.ToString());
-				IoManager.SetNextMusicLoop ("combat2");
-			} else {
-				Logger.Debug ("AreaAI", "UpdateMusic", "threath level none = " + threat.ToString());
-				IoManager.SetNextMusicLoop ("intro");
+			foreach (var loop in this.MusicLoops) {
+				//Logger.Debug AreaAI "UpdateMusic", "threath level " + this.VisibleThreatLevel.ToString() + " vs music level " + loop.MaxThreat.ToString());
+				if (this.VisibleThreatLevel <= loop.MaxThreat) {
+					//Logger.Debug AreaAI "UpdateMusic", "selected loop " + loop.ID);
+					IoManager.SetNextMusicLoop (loop.ID);
+					return;
+				}
 			}
 		}
 	}
@@ -315,7 +320,9 @@ namespace WizardsDuel.Game
 			this.oldInitiative = Parent.Initiative;
 			//Logger.Info ("LavaEmitterAI", "onRound", "Current initiative " + this.startInitiative.ToString() + " parent " + this.Parent.GetHashCode().ToString());
 			if (this.status == 0 && this.Generation > 0 && this.Generation < MAX_GENERATIONS && this.firstRound == false && this.hasSpawned == false) {
-				Spawn ();
+				if (this.Parent.Visible) {
+					Spawn ();
+				}
 			}
 			if (this.initiative > this.hardenInitiative && this.status == 0) {
 				this.status = 1;
@@ -406,6 +413,11 @@ namespace WizardsDuel.Game
 				sim.SetAnimation (lava, "CREATE");
 			}
 		}
+	}
+
+	public struct MusicLoop {
+		public string ID;
+		public int MaxThreat;
 	}
 
 	public class UserAI: ArtificialIntelligence {

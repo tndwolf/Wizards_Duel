@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Xml;
 using WizardsDuel.Utils;
 using System.Text.RegularExpressions;
+using WizardsDuel.Io;
 
 namespace WizardsDuel.Game
 {
@@ -454,9 +455,10 @@ namespace WizardsDuel.Game
 			for (var n = 0; n < iterations; n++) {
 				for (var y = 1; y < this.Height - 1; y++) {
 					for (var x = 1; x < this.Width - 1; x++) {
-						//if (this.CountNeighbors (x, y, ".") == 1 && this.CountNeighbors (x, y, "#") == 3) {
-						//	this.Data [x, y] = "#";
-						//}
+						if (this.Objects.Find(o => o.X == x && o.Y == y) != null) {
+							// skip cell if some object was on it
+							continue;
+						}
 						if (this.Data [x-1, y] == "." && this.Data[x+1, y] == "." && this.Data [x, y-1] == "#" && this.Data[x, y+1] == "#") {
 							this.Data [x, y] = ".";
 						}
@@ -771,20 +773,9 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public string DefaultTile { get; set; }
-
-		/// <summary>
-		/// Gets one of the possible end block at random.
-		/// </summary>
-		/// <value>The end block.</value>
-		protected string EndBlock {
-			get {
-				return this.endBlocks [Simulator.Instance.Random (this.endBlocks.Count)];
-			}
-		}
-
-		public string[,] Generate(World res) {
-			// Fill the metadata
+		public AreaAI BuildAI(XmlNode xblock) {
+			var res = new AreaAI ();
+			// Enemies
 			var enemies = this.xdoc.SelectNodes("//enemy");
 			for (int e = 0; e < enemies.Count; e++) {
 				var bp = new EnemyBlueprint (
@@ -816,8 +807,77 @@ namespace WizardsDuel.Game
 				}
 				res.enemyBlueprints.Add (bp);
 			}
+			var xenemies = this.xdoc.SelectSingleNode ("//enemies");
+			res.progression = XmlUtilities.GetIntArray(xenemies, "threatProgression");
+			res.MaxThreatLevel = XmlUtilities.GetInt(xenemies, "maxThreat", 255);
+			res.AlwaysIncreaseThreat = XmlUtilities.GetBool (xenemies, "alwaysIncreaseThreat");
+			// Music
+			var music = IoManager.LoadMusic(XmlUtilities.GetString(this.xdoc.SelectSingleNode("//backgroundmusic"), "file"));
+			var xloops = this.xdoc.SelectNodes("//loop");
+			for (int i = 0; i < xloops.Count; i++) {
+				music.AddLoop(
+					XmlUtilities.GetString (xloops[i], "name"),
+					XmlUtilities.GetInt (xloops[i], "start"),
+					XmlUtilities.GetInt (xloops[i], "end")
+				);
+				var loop = new MusicLoop { 
+					ID = XmlUtilities.GetString (xloops[i], "name"), 
+					MaxThreat = XmlUtilities.GetInt (xloops[i], "maxThreat")
+				};
+				res.MusicLoops.Add (loop);
+			}
+			res.MusicLoops.Sort ((l1, l2) => l1.MaxThreat.CompareTo(l2.MaxThreat));
+			return res;
+		}
+
+		public string DefaultTile { get; set; }
+
+		/// <summary>
+		/// Gets one of the possible end block at random.
+		/// </summary>
+		/// <value>The end block.</value>
+		protected string EndBlock {
+			get {
+				return this.endBlocks [Simulator.Instance.Random (this.endBlocks.Count)];
+			}
+		}
+
+		public string[,] Generate(World res) {
+			res.AI = BuildAI (this.xdoc.DocumentElement);
+			// Fill the metadata
+			/*var enemies = this.xdoc.SelectNodes("//enemy");
+			for (int e = 0; e < enemies.Count; e++) {
+				var bp = new EnemyBlueprint (
+					XmlUtilities.GetString(enemies[e], "blueprint"),
+					XmlUtilities.GetInt(enemies[e], "threat")
+				);
+				var type = XmlUtilities.GetString (enemies [e], "type");
+				switch (type) {
+				case "MOB":
+					bp.EnemyType = EnemyType.MOB;
+					break;
+				case "LIGHTNING_BRUISER":
+					bp.EnemyType = EnemyType.LIGHTNING_BRUISER;
+					break;
+				case "GLASS_CANNON":
+					bp.EnemyType = EnemyType.GLASS_CANNON;
+					break;
+				case "MIGHTY_GLACIER":
+					bp.EnemyType = EnemyType.MIGHTY_GLACIER;
+					break;
+				case "STONE_WALL":
+					bp.EnemyType = EnemyType.STONE_WALL;
+					break;
+				case "CASTER":
+					bp.EnemyType = EnemyType.CASTER;
+					break;
+				default:
+					break;
+				}
+				res.enemyBlueprints.Add (bp);
+			}
 			res.AI = new AreaAI ();
-			res.AI.progression = XmlUtilities.GetIntArray(this.xdoc.SelectSingleNode("//enemies"), "threatProgression");
+			res.AI.progression = XmlUtilities.GetIntArray(this.xdoc.SelectSingleNode("//enemies"), "threatProgression");*/
 
 			// Generate the map
 			BufferLevel level = null;

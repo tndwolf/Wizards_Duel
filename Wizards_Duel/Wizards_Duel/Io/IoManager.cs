@@ -157,7 +157,33 @@ namespace WizardsDuel.Io
 		}
 
 		private static void CheckKeyboard() {
-			if (Keyboard.IsKeyPressed (Keyboard.Key.A) || Keyboard.IsKeyPressed (Keyboard.Key.Left)) {
+			//*
+			if (Keyboard.IsKeyPressed (Keyboard.Key.Q) || (Keyboard.IsKeyPressed (Keyboard.Key.A) && Keyboard.IsKeyPressed (Keyboard.Key.W))) {
+				IoManager.inputs.Command = InputCommands.UP_LEFT;
+			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.E) || (Keyboard.IsKeyPressed (Keyboard.Key.D) && Keyboard.IsKeyPressed (Keyboard.Key.W))) {
+				IoManager.inputs.Command = InputCommands.UP_RIGHT;
+			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.Z) || (Keyboard.IsKeyPressed (Keyboard.Key.A) && Keyboard.IsKeyPressed (Keyboard.Key.X))) {
+				IoManager.inputs.Command = InputCommands.DOWN_LEFT;
+			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.C) || (Keyboard.IsKeyPressed (Keyboard.Key.D) && Keyboard.IsKeyPressed (Keyboard.Key.X))) {
+				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
+			}//*/
+			/*
+			if (Keyboard.IsKeyPressed (Keyboard.Key.A) && Keyboard.IsKeyPressed (Keyboard.Key.W)) {
+				IoManager.inputs.Command = InputCommands.UP_LEFT;
+			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.D) && Keyboard.IsKeyPressed (Keyboard.Key.W)) {
+				IoManager.inputs.Command = InputCommands.UP_RIGHT;
+			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.A) && Keyboard.IsKeyPressed (Keyboard.Key.S)) {
+				IoManager.inputs.Command = InputCommands.DOWN_LEFT;
+			}
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.D) && Keyboard.IsKeyPressed (Keyboard.Key.S)) {
+				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
+			}//*/
+			else if (Keyboard.IsKeyPressed (Keyboard.Key.A) || Keyboard.IsKeyPressed (Keyboard.Key.Left)) {
 				IoManager.inputs.Command = InputCommands.LEFT;
 			}
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.D) || Keyboard.IsKeyPressed (Keyboard.Key.Right)) {
@@ -169,24 +195,12 @@ namespace WizardsDuel.Io
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.X) || Keyboard.IsKeyPressed (Keyboard.Key.Down)) {
 				IoManager.inputs.Command = InputCommands.DOWN;
 			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Q)) {
-				IoManager.inputs.Command = InputCommands.UP_LEFT;
-			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.E)) {
-				IoManager.inputs.Command = InputCommands.UP_RIGHT;
-			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Z)) {
-				IoManager.inputs.Command = InputCommands.DOWN_LEFT;
-			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.C)) {
-				IoManager.inputs.Command = InputCommands.DOWN_RIGHT;
-			}
-			else if (Keyboard.IsKeyPressed (Keyboard.Key.Space)) {
-				IoManager.inputs.Command = InputCommands.SKIP;
-			}
-			/*else if (Keyboard.IsKeyPressed (Keyboard.Key.Tab)) {
-				IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
-			}*/
+			//else if (Keyboard.IsKeyPressed (Keyboard.Key.Space)) {
+			//	IoManager.inputs.Command = InputCommands.SKIP;
+			//}
+			//else if (Keyboard.IsKeyPressed (Keyboard.Key.Tab)) {
+			//	IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
+			//}
 		}
 
 		/// <summary>
@@ -227,6 +241,10 @@ namespace WizardsDuel.Io
 			return tex;
 		}
 
+		static public void CrossFade(int fadeOutMillis, int fadeInMillis) {
+
+		}
+
 		static public void Draw() {
 			var time = IoManager.clock.ElapsedMilliseconds;
 			var delta = time - IoManager.referenceTime;
@@ -250,7 +268,6 @@ namespace WizardsDuel.Io
 						Logger.Debug ("IoManager", "Draw", "Ending fade at " + IoManager.Time.ToString());
 				}
 				IoManager.window.Draw (IoManager.fadeOverlay);
-
 				IoManager.window.Display();
 				if (IoManager.music != null) IoManager.music.Update (IoManager.Time);
 			}
@@ -258,6 +275,32 @@ namespace WizardsDuel.Io
 				// Wait a bit, no need to use 100% CPU
 				System.Threading.Thread.Sleep((int)(IoManager.frameTime - delta));
 			}
+		}
+
+		static public void ForceDraw() {
+			var time = IoManager.clock.ElapsedMilliseconds;
+			var delta = time - IoManager.referenceTime;
+			IoManager.window.DispatchEvents();
+			IoManager.window.Clear();
+			IoManager.deltaTime = delta;
+			IoManager.referenceTime = time;
+			IoManager.window.Draw(IoManager.root);
+
+			fadeRefTime += (int)delta;
+			if (fadeRefTime < fadeEndTime) {
+				var k = 1.0f - (float)(fadeEndTime - fadeRefTime) / (float)(fadeEndTime);
+				IoManager.fadeOverlay.FillColor = new Color (
+					(byte)(fadeStartColor.R * (1f-k) + fadeEndColor.R * k),
+					(byte)(fadeStartColor.G * (1f-k) + fadeEndColor.G * k),
+					(byte)(fadeStartColor.B * (1f-k) + fadeEndColor.B * k),
+					(byte)(fadeStartColor.A * (1f-k) + fadeEndColor.A * k)
+				);
+				if (k >= 0.95f)
+					Logger.Debug ("IoManager", "Draw", "Ending fade at " + IoManager.Time.ToString());
+			}
+			IoManager.window.Draw (IoManager.fadeOverlay);
+			IoManager.window.Display();
+			if (IoManager.music != null) IoManager.music.Update (IoManager.Time);
 		}
 
 		static public Font DefaultFont { 
@@ -354,6 +397,8 @@ namespace WizardsDuel.Io
 			}
 			else*/ if (e.Code == Keyboard.Key.Tab) {
 				IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
+			} else if (e.Code == Keyboard.Key.Space) {
+				IoManager.inputs.Command = InputCommands.SKIP;
 			}
 		}
 

@@ -1,11 +1,17 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <level id="test" minArea="400" maxWidth="200" maxHeight="200" algorithm="BLOCK" start="b_start" end="b_end_gate,b_end_stairs">
-	<enemies threatProgression="1 0 0 0 0 1 0 0 0 0 2 0 0 0 0 3 0 0 0 0 5 0 0 0 0">
+	<enemies threatProgression="1 0 0 0 0 1 0 0 0 0 2 0 0 0 0 3 0 0 0 0 5 0 0 0 0" maxThreat="20" alwaysIncreaseThreat="true">
 		<enemy blueprint="bp_firefly" type="MOB" threat="1"/>
 		<enemy blueprint="bp_fire_bronze_thug1" type="STONE_WALL" threat="3"/>
 		<enemy blueprint="bp_fire_salamander1" type="LIGHTNING_BRUISER"  threat="5"/>
 		<enemy blueprint="bp_fire_thug1" type="GLASS_CANNON"  threat="2"/>
 	</enemies>
+	<backgroundmusic file="wizardduel06FIRELEVEL_good02_2.ogg">
+		<loop name="intro" start="0" end="16540" maxThreat="0"/>
+		<loop name="combat1" start="16541" end="33090" maxThreat="2"/>
+		<loop name="combat2" start="33091" end="41360" maxThreat="6"/>
+		<loop name="combat3" start="41361" end="49640" maxThreat="15"/>
+	</backgroundmusic>
 	<!-- in general "occurs" attribute are the number of occurencies while
 	"probability" is a pb between 0.0 and 1.0 -->
 	<tiles default="#">

@@ -170,6 +170,12 @@ namespace WizardsDuel.States
 					break;
 
 				default:
+					IoManager.Clear ();
+					var label = new Label ("Loading", 32, "munro.ttf");
+					label.AlignCenter = true;
+					label.Position = new SFML.Window.Vector2f (IoManager.Width / 2, IoManager.Height / 2);
+					IoManager.AddWidget (label);
+					IoManager.ForceDraw ();
 					this.NextState = GameStates.TEST;
 					break;
 				}

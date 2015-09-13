@@ -89,6 +89,7 @@ namespace WizardsDuel.Game
 				res.Faction = XmlUtilities.GetString(properties, "faction");
 				res.Static = XmlUtilities.GetBool(properties, "static");
 				res.Dressing = XmlUtilities.GetBool(properties, "dressing");
+				res.Threat = XmlUtilities.GetInt(properties, "threat");
 				var ai = XmlUtilities.GetString(properties, "ai");
 				switch (ai) {
 				case ArtificialIntelligence.ICE:
@@ -437,7 +438,9 @@ namespace WizardsDuel.Game
 			case "SPAWN":
 				res = new SpawnBehaviour ();
 				var stmp = res as SpawnBehaviour;
-				stmp.SpawnTemplateId = script [1];
+				for (var i = 1; i < script.Length; i++) {
+					stmp.SpawnTemplateId = script [i];
+				}
 				break;
 
 			default:

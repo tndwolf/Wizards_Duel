@@ -59,7 +59,6 @@ namespace WizardsDuel.Game
 		public const string DEFAULT_TILE_ID = "DEFAULT";
 		public const int FOV_UPDATE_RADIUS = 7;
 
-		internal List<EnemyBlueprint> enemyBlueprints = new List<EnemyBlueprint>();
 		internal Dictionary<string, Entity> entities = new Dictionary<string, Entity>();
 		internal int lastSightRadius = 1;
 		internal Tile[,] map;

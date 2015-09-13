@@ -15,6 +15,7 @@ namespace WizardsDuel.Game
 		public WizardsDuel.Io.OutObject OutObject = null;
 		public List<Skill> skills = new List<Skill>();
 		public List<string> Tags = new List<string>();
+		public int Threat = 0;
 		public Dictionary<string, int> Vars = new Dictionary<string, int>();
 		public int X = 0;
 		public int Y = 0;

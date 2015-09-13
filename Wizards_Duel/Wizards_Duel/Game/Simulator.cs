@@ -685,7 +685,7 @@ namespace WizardsDuel.Game
 						var ta = new TranslateAnimation (res.OutObject.GetAnimationLength ("SHIFT"), dx * this.CellWidth, dy * this.CellHeight);
 						res.OutObject.AddAnimator (ta);
 					} else {
-						var ta = new TranslateAnimation (250, dx * this.CellWidth, dy * this.CellHeight);
+						var ta = new TranslateAnimation (150, dx * this.CellWidth, dy * this.CellHeight);
 						res.OutObject.AddAnimator (ta);
 					}
 
