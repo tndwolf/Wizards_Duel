@@ -154,6 +154,7 @@ namespace WizardsDuel.Io
 
 		virtual public void AddAnimator(Animator animator) {
 			if (animator.IsParentValid(this)) {
+				//this.animators.RemoveAll (x => animator.GetType () == x.GetType ());
 				this.animators.Add(animator);
 			}
 			else {

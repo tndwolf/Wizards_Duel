@@ -4,23 +4,22 @@ using System.Collections.Generic;
 using WizardsDuel.Utils;
 using WizardsDuel.Io;
 
-namespace WizardsDuel.Game
-{
+namespace WizardsDuel.Game {
 	public class Entity: EventObject {
 		public string DeathAnimation = String.Empty;
 		public Color DeathMain = Color.Red;
 		public IntRect DeathRect = new IntRect (0, 0, 1, 1);
 		public Color DeathSecundary = Color.Black;
-		public List<Effect> effects = new List<Effect>();
+		public List<Effect> effects = new List<Effect> ();
 		public WizardsDuel.Io.OutObject OutObject = null;
-		public List<Skill> skills = new List<Skill>();
-		public List<string> Tags = new List<string>();
+		public List<Skill> skills = new List<Skill> ();
+		public List<string> Tags = new List<string> ();
 		public int Threat = 0;
-		public Dictionary<string, int> Vars = new Dictionary<string, int>();
+		public Dictionary<string, int> Vars = new Dictionary<string, int> ();
 		public int X = 0;
 		public int Y = 0;
 
-		public Entity(string id, string templateId = "") {
+		public Entity (string id, string templateId = "") {
 			this.ID = id;
 			this.TemplateID = templateId;
 			this.AI = new ArtificialIntelligence ();
@@ -30,30 +29,32 @@ namespace WizardsDuel.Game
 			this.SpeedFactor = 1f;
 		}
 
-		public void AddEffect(Effect effect) {
+		public void AddEffect (Effect effect) {
 			var existing = this.effects.Find (x => x.ID == effect.ID);
 			if (existing != null) {
 				existing.Duration = Math.Max (effect.Duration, existing.Duration);
 				// TODO check for the maximum strength of effect
-			} else {
+			}
+			else {
 				this.effects.Add (effect);
 				effect.Parent = this;
 				effect.OnAdded ();
 			}
 		}
 
-		public void AddSkill(Skill skill) {
+		public void AddSkill (Skill skill) {
 			this.skills.Add (skill);
-			this.skills.Sort();
+			this.skills.Sort ();
 		}
 
-		public void AddTag(string tag) {
+		public void AddTag (string tag) {
 			if (!this.Tags.Contains (tag)) {
 				this.Tags.Add (tag);
 			}
 		}
 
 		private ArtificialIntelligence _AI;
+
 		/// <summary>
 		/// Gets or sets the Artificial Intelligence Controlling the object.
 		/// By default the object is inert.
@@ -85,8 +86,8 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public void Damage(int howMuch, string type) {
-			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
+		public void Damage (int howMuch, string type) {
+			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString () + " vs health " + this.Health.ToString ());
 			/*foreach (var skill in this.skills) {
 				howMuch = skill.ProcessDamage (howMuch, type);
 			}*/
@@ -97,9 +98,9 @@ namespace WizardsDuel.Game
 			if (howMuch > 0 && type == Simulator.DAMAGE_TYPE_PHYSICAL) {
 				Simulator.Instance.CreateParticleOn (Simulator.BLOOD_PARTICLE, this);
 			}
-			Logger.Debug ("Entity", "Damage", "After process " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
+			Logger.Debug ("Entity", "Damage", "After process " + type + " damage: " + howMuch.ToString () + " vs health " + this.Health.ToString ());
 			this.Health -= howMuch;
-			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString() + " vs health " + this.Health.ToString());
+			Logger.Debug ("Entity", "Damage", "Receiving " + type + " damage: " + howMuch.ToString () + " vs health " + this.Health.ToString ());
 			if (this.DamageBar != null) {
 				this.DamageBar.Level = 1f - (float)this.Health / (float)this.MaxHealth;
 			}
@@ -136,23 +137,25 @@ namespace WizardsDuel.Game
 				this.OutObject.SetAnimation (this.OutObject.IdleAnimation);
 			}
 		}
+
 		private bool frozen;
 
-		public Skill GetPrioritySkillInRange(int range) {
+		public Skill GetPrioritySkillInRange (int range) {
 			// note that skills are sorted by priority when added
 			return this.skills.Find (x => x.RoundsToGo < 1 && x.Range <= range);
 		}
 
-		public int GetVar(string name, int def=0) {
+		public int GetVar (string name, int def = 0) {
 			int res;
 			if (this.Vars.TryGetValue (name, out res) == true) {
 				return res;
-			} else {
+			}
+			else {
 				return def;
 			}
 		}
 
-		public bool HasTag(string tag) {
+		public bool HasTag (string tag) {
 			return this.Tags.Contains (tag);
 		}
 
@@ -166,7 +169,7 @@ namespace WizardsDuel.Game
 			protected set;
 		}
 
-		public void Kill() {
+		public void Kill () {
 			/*foreach (var skill in this.skills) {
 				howMuch = skill.OnDeath ();
 			}*/
@@ -184,17 +187,17 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		public void RemoveEffect(Effect effect) {
+		public void RemoveEffect (Effect effect) {
 			this.effects.Remove (effect);
 			effect.OnRemoved ();
 		}
 
-		public void RemoveTag(string tag) {
+		public void RemoveTag (string tag) {
 			this.Tags.Remove (tag);
 		}
 
-		public void SetVar(string name, int value) {
-			this.Vars[name] = value;
+		public void SetVar (string name, int value) {
+			this.Vars [name] = value;
 		}
 
 		public float SpeedFactor { get; set; }
@@ -203,9 +206,8 @@ namespace WizardsDuel.Game
 
 		public string TemplateID { get; protected set; }
 
-		public bool Visible { get; set; }
-
 		#region EventObject implementation
+
 		public void Run (Simulator sim, EventManager ed) {
 			if (this.ID == Simulator.PLAYER_ID) {
 				ed.AcceptEvent = true;
@@ -231,8 +233,9 @@ namespace WizardsDuel.Game
 			}
 			if (this.ID == Simulator.PLAYER_ID && ed.WaitingForUser == true) {
 				return;
-			} else {
-				Logger.Debug ("Entity", "Run", "Ran " + this.ID + " at initiative " + sim.InitiativeCount.ToString());
+			}
+			else {
+				Logger.Debug ("Entity", "Run", "Ran " + this.ID + " at initiative " + sim.InitiativeCount.ToString ());
 				this.HasEnded = true;
 				this.Initiative += (int)(Simulator.ROUND_LENGTH / this.SpeedFactor);
 			}
@@ -245,7 +248,8 @@ namespace WizardsDuel.Game
 					this.Visible = true;
 					this.OutObject.AddAnimator (new WizardsDuel.Io.ColorAnimation (Color.Transparent, Color.White, 300));
 				}
-			} else {
+			}
+			else {
 				if (this.Visible == true && this.LastSeen + Simulator.ROUND_LENGTH < this.Initiative) {
 					this.Visible = false;
 					this.OutObject.AddAnimator (new WizardsDuel.Io.ColorAnimation (Color.White, Color.Transparent, 300));
@@ -254,11 +258,13 @@ namespace WizardsDuel.Game
 		}
 
 		bool hasEnded = false;
+
 		public bool HasEnded {
 			get { 
 				if (this.Dressing == true || this.Static == true) {
 					return true;
-				} else {
+				}
+				else {
 					return this.hasEnded; //&& this.OutObject.IsInIdle;
 				}
 			}
@@ -286,19 +292,27 @@ namespace WizardsDuel.Game
 		/// <param name="obj">Object.</param>
 		public int CompareTo (object obj) {
 			try {
-				var comp = (EventObject) obj;
+				var comp = (EventObject)obj;
 				return this.Initiative.CompareTo (comp.Initiative);
-			} catch (Exception ex) {
-				Logger.Debug ("Entity", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+			}
+			catch (Exception ex) {
+				Logger.Debug ("Entity", "CompareTo", "Trying to compare a wrong object" + ex.ToString ());
 				return 0;
 			}
 		}
+
+		public bool Visible { get; set; }
+
 		#endregion
 
 		#region OutputUserInterface
+
 		internal Icon OutIcon { get; set; }
+
 		internal SolidBorder Border { get ; set; }
+
 		internal DamageBarDecorator DamageBar { get; set; }
+
 		#endregion
 	}
 }

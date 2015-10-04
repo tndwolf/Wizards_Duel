@@ -19,44 +19,44 @@ using WizardsDuel.Io;
 using WizardsDuel.States;
 using WizardsDuel.Utils;
 
-namespace WizardsDuel
-{
+namespace WizardsDuel {
 	class MainClass {
 		public static void Main (string[] args) {
 			try {
 				Logger.Initialize (LogLevel.ALL, true);
 				Logger.SetOutFile ();
 
-				Logger.Blacklist("AddLayer");
-				Logger.Blacklist("AddRule");
-				Logger.Blacklist("AreaAI");
-				Logger.Blacklist("BackgroundMusic");
-				Logger.Blacklist("CalculateLoS");
-				Logger.Blacklist("CanShift");
-				Logger.Blacklist("Effect");
-				Logger.Blacklist("Entity");
-				Logger.Blacklist("EventManager");
-				Logger.Blacklist("GameFactory");
-				Logger.Blacklist("IoManager");
-				Logger.Blacklist("LavaAI");
-				Logger.Blacklist("LoadTilemask");
-				Logger.Blacklist("LoadWorldView");
-				Logger.Blacklist("Main");
-				Logger.Blacklist("MeleeAI");
-				Logger.Blacklist("OnRound");
-				Logger.Blacklist("OutObject");
-				Logger.Blacklist("Run");
-				Logger.Blacklist("SetDungeon");
-				Logger.Blacklist("SetUserEvent");
-				Logger.Blacklist("Simulator");
-				Logger.Blacklist("TestLevel");
-				Logger.Blacklist("TranslateAnimation");
-				Logger.Blacklist("WorldFactory");
-				Logger.Blacklist("XmlUtilities");
+				Logger.Blacklist ("AddLayer");
+				Logger.Blacklist ("AddRule");
+				Logger.Blacklist ("AreaAI");
+				Logger.Blacklist ("BackgroundMusic");
+				Logger.Blacklist ("CalculateLoS");
+				Logger.Blacklist ("CanShift");
+				Logger.Blacklist ("Effect");
+				Logger.Blacklist ("Entity");
+				Logger.Blacklist ("EventManager");
+				Logger.Blacklist ("GameFactory");
+				Logger.Blacklist ("IoManager");
+				Logger.Blacklist ("LavaAI");
+				Logger.Blacklist ("LoadTilemask");
+				Logger.Blacklist ("LoadWorldView");
+				Logger.Blacklist ("Main");
+				Logger.Blacklist ("MeleeAI");
+				Logger.Blacklist ("OnRound");
+				Logger.Blacklist ("OutObject");
+				Logger.Blacklist ("Run");
+				Logger.Blacklist ("SetDungeon");
+				Logger.Blacklist ("SetUserEvent");
+				Logger.Blacklist ("Simulator");
+				Logger.Blacklist ("TestLevel");
+				Logger.Blacklist ("TranslateAnimation");
+				Logger.Blacklist ("WorldFactory");
+				Logger.Blacklist ("XmlUtilities");
 
-				IoManager.Initialize ("Wizard's Duel", 1280, 720);
-			} catch (Exception ex) {
-				Console.WriteLine ("Configuration Error, Aborting: " + ex.ToString());
+				IoManager.Initialize ("Wizards of Unica", 1280, 720);
+			}
+			catch (Exception ex) {
+				Console.WriteLine ("Configuration Error, Aborting: " + ex.ToString ());
 				return;
 			}
 

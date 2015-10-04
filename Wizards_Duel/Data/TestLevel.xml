@@ -1,4 +1,12 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Dear user, thank you for taking the time to take a look at this file.
+	If you wanto to modify the data contained herein please do so and feel
+	free to experiment! If you manage to find some exciting new combination
+	or modification please share your discovery with us!
+	You will (eventually) find a brief manual for modders inside the
+	documentation folder.
+-->
 <level id="test" minArea="400" maxWidth="200" maxHeight="200" algorithm="BLOCK" start="b_start" end="b_end_gate,b_end_stairs">
 	<enemies threatProgression="1 0 0 0 0 1 0 0 0 0 2 0 0 0 0 3 0 0 0 0 5 0 0 0 0" maxThreat="20" alwaysIncreaseThreat="true">
 		<enemy blueprint="bp_firefly" type="MOB" threat="1"/>
@@ -141,15 +149,19 @@
 		<exit x="6" y="0" direction="N"/>
 		<exit x="2" y="4" direction="S"/>
 		<exit x="6" y="4" direction="S"/>
-		<object ref="bp_fire_carpet2" x="4" y="2" probability="0.8"/>
+		<object ref="bp_fire_carpet2" x="3" y="2" probability="1.0"/>
 		<!--object ref="bp_fire_column2" x="7" y="2" probability="1.0"/>
 		<object ref="bp_fire_column2" x="1" y="2" probability="1.0"/-->
+		<object ref="bp_fire_lava" x="3" y="2" probability="1.0"/>
+		<object ref="bp_fire_lava" x="4" y="2" probability="1.0"/>
+		<object ref="bp_fire_lava" x="3" y="3" probability="1.0"/>
+		<object ref="bp_fire_lava" x="4" y="3" probability="1.0"/>
 
-		<object ref="bp_fire_column2" x="6" y="1" probability="0.7"/>
+		<object ref="bp_fire_column2" x="5" y="1" probability="0.7"/>
 		<object ref="bp_fire_column2" x="2" y="1" probability="0.7"/>
 
-		<object ref="bp_fire_column2" x="6" y="3" probability="0.7"/>
-		<object ref="bp_fire_column2" x="2" y="3" probability="0.7"/>
+		<object ref="bp_fire_column2" x="5" y="4" probability="0.7"/>
+		<object ref="bp_fire_column2" x="2" y="4" probability="0.7"/>
 	</block>
 	<block id="b_room_huge_columns" width="9" height="5" occurs="1">
 		.........

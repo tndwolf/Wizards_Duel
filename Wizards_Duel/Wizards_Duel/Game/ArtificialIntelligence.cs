@@ -21,19 +21,24 @@ using SFML.Window;
 using WizardsDuel.Utils;
 using WizardsDuel.Io;
 
-namespace WizardsDuel.Game
-{
+namespace WizardsDuel.Game {
 	public class AreaAI: ArtificialIntelligence {
-		internal List<EnemyBlueprint> enemyBlueprints = new List<EnemyBlueprint>();
-		internal List<MusicLoop> MusicLoops = new List<MusicLoop>();
+		internal List<EnemyBlueprint> enemyBlueprints = new List<EnemyBlueprint> ();
+		internal List<MusicLoop> MusicLoops = new List<MusicLoop> ();
+
 		new public World Parent { get; set; }
 
 		internal int[] progression = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 5, 0, 0, 0, 0 };
 		private int progressionIndex = 0;
+
 		public bool AlwaysIncreaseThreat { get; set; }
+
 		public int CurrentThreatLevel { get; set; }
+
 		public int MaxThreatLevel { get; set; }
+
 		public int ThreatLevel { get; set; }
+
 		public int VisibleThreatLevel { get; set; }
 
 		override public void OnRound () {
@@ -85,8 +90,8 @@ namespace WizardsDuel.Game
 									continue;
 								}
 								if (x > 3 && y > 3 && x < sim.world.GridWidth - 2 && y < sim.world.GridHeight - 2 &&
-									sim.world.IsWalkable (x, y) && 
-									sim.GetObjectAt (x, y) == null) {
+								    sim.world.IsWalkable (x, y) &&
+								    sim.GetObjectAt (x, y) == null) {
 									//Logger.Info ("AreaAI", "OnRound", "Adding possible cell " + new {x, y}.ToString());
 									possibleCells.Add (new Vector2i (x, y));
 								}
@@ -108,7 +113,7 @@ namespace WizardsDuel.Game
 			this.UpdateMusic ();
 		}
 
-		virtual public void UpdateMusic() {
+		virtual public void UpdateMusic () {
 			this.VisibleThreatLevel = 0;
 			foreach (var e in Simulator.Instance.world.entities.Values) {
 				this.VisibleThreatLevel += (e.Visible == true && e.Dressing == false) ? e.Threat : 0;
@@ -151,7 +156,7 @@ namespace WizardsDuel.Game
 	}
 
 	public class DestructibleAI: ArtificialIntelligence {
-		public DestructibleAI(int damage = 1, int damageRadius = 1, string damageType = Simulator.DAMAGE_TYPE_UNTYPED) {
+		public DestructibleAI (int damage = 1, int damageRadius = 1, string damageType = Simulator.DAMAGE_TYPE_UNTYPED) {
 			Damage = damage;
 			DamageRadius = damageRadius;
 			DamageType = damageType;
@@ -178,7 +183,7 @@ namespace WizardsDuel.Game
 			var objInRadius = Simulator.Instance.GetObjectsAt (Parent.X, Parent.Y, DamageRadius);
 			foreach (var e in objInRadius) {
 				if (e != this.Parent) {
-					Simulator.Instance.events.WaitAndRun (200, new MethodEvent(() => e.Damage (this.Damage, this.DamageType)));
+					Simulator.Instance.events.WaitAndRun (200, new MethodEvent (() => e.Damage (this.Damage, this.DamageType)));
 				}
 			}
 		}
@@ -187,13 +192,14 @@ namespace WizardsDuel.Game
 	public class MeleeAI: ArtificialIntelligence {
 		override public void OnRound () {
 			var range = this.Parent.CurrentActiveRange;
-			var skill = this.Parent.GetPrioritySkillInRange(range);
+			var skill = this.Parent.GetPrioritySkillInRange (range);
 			//Logger.Debug ("MeleeAI", "OnRound", "Using skill " + skill.Name + " searching in range " + range.ToString());
 			var enemiesInRange = Simulator.Instance.GetEnemiesAt ("PLAYER", this.Parent.X, this.Parent.Y, range);
 			if (enemiesInRange.Count > 0 && skill != null) {
 				Logger.Debug ("MeleeAI", "OnRound", "Trying skill " + skill.Name + " on " + enemiesInRange [0].ID);
-				Simulator.Instance.TrySkill (skill, this.Parent, enemiesInRange[0]);
-			} else {
+				Simulator.Instance.TrySkill (skill, this.Parent, enemiesInRange [0]);
+			}
+			else {
 				var player = Simulator.Instance.GetPlayer ();
 				if (player.Health > 0) {
 					var dx = Math.Sign (player.X - this.Parent.X);
@@ -201,28 +207,33 @@ namespace WizardsDuel.Game
 					var ex = this.Parent.X + dx;
 					var ey = this.Parent.Y + dy;
 					var world = Simulator.Instance.world;
-					if (Simulator.Instance.IsSafeToWalk (this.Parent,ex, ey)) {
-						Logger.Debug ("MeleeAI", "OnRound", "Moving " + Parent.ID.ToString());
+					if (Simulator.Instance.IsSafeToWalk (this.Parent, ex, ey)) {
+						Logger.Debug ("MeleeAI", "OnRound", "Moving " + Parent.ID.ToString ());
 						Simulator.Instance.Shift (this.Parent.ID, dx, dy);
-					} else if (dx == 0) {
+					}
+					else if (dx == 0) {
 						ex -= 1;
 						if (Simulator.Instance.IsSafeToWalk (this.Parent, ex, ey)) {
 							Simulator.Instance.Shift (this.Parent.ID, dx - 1, dy);
 							return;
-						} else if (Simulator.Instance.IsSafeToWalk (this.Parent, ex + 2, ey)) {
+						}
+						else if (Simulator.Instance.IsSafeToWalk (this.Parent, ex + 2, ey)) {
 							Simulator.Instance.Shift (this.Parent.ID, dx + 1, dy);
 							return;
 						}
-					} else if (dy == 0) {
+					}
+					else if (dy == 0) {
 						ey -= 1;
 						if (Simulator.Instance.IsSafeToWalk (this.Parent, ex, ey)) {
 							Simulator.Instance.Shift (this.Parent.ID, dx, dy - 1);
 							return;
-						} else if (Simulator.Instance.IsSafeToWalk (this.Parent, ex, ey + 2)) {
+						}
+						else if (Simulator.Instance.IsSafeToWalk (this.Parent, ex, ey + 2)) {
 							Simulator.Instance.Shift (this.Parent.ID, dx, dy + 1);
 							return;
 						}
-					} else {
+					}
+					else {
 						dx = Simulator.Instance.Random (3) - 1;
 						dy = Simulator.Instance.Random (3) - 1;
 						Simulator.Instance.CanShift (this.Parent.ID, dx, dy, true);
@@ -233,7 +244,7 @@ namespace WizardsDuel.Game
 	}
 
 	public class IceAI: ArtificialIntelligence {
-		override public void OnCreate() {
+		override public void OnCreate () {
 			var entitiesOverMe = Simulator.Instance.GetObjectsAt (this.Parent.X, this.Parent.Y);
 			foreach (var entity in entitiesOverMe) {
 				if (entity.HasTag ("HAZARD") && entity.HasTag ("GROUND")) {
@@ -258,7 +269,10 @@ namespace WizardsDuel.Game
 		private int initiative = 0;
 		private int hardenInitiative = 0;
 		private int oldInitiative = 0;
-		internal int status = 0; // 0 lava, 1 basalt
+		internal int status = 0;
+		// 0 lava, 1 basalt
+
+		public bool CanHarden { get; set; }
 
 		/// <summary>
 		/// Lava cells has a "generation", zero generation (the default) do not spawn 
@@ -278,7 +292,7 @@ namespace WizardsDuel.Game
 			}
 		}
 
-		override public void OnCreate() {
+		override public void OnCreate () {
 			var sim = Simulator.Instance;
 			var objects = sim.world.GetObjectsAt (Parent.X, Parent.Y);
 			//Logger.Debug ("LavaAI", "onCreate", "Deleting existing items");
@@ -291,12 +305,12 @@ namespace WizardsDuel.Game
 					// Found lava already present, destroy old patch and update
 					Logger.Debug ("LavaAI", "onCreate", "Deleting " + o.ID);
 					this.Parent.OutObject.SetAnimation ("IDLE");
-					sim.DestroyObject(o.ID);
+					sim.DestroyObject (o.ID);
 				}
 			}
 		}
 
-		override public void OnDamage(ref int howMuch, string type) {
+		override public void OnDamage (ref int howMuch, string type) {
 			if (type == Simulator.DAMAGE_TYPE_COLD) {
 				Parent.OutObject.ZIndex -= 1;
 				Parent.OutObject.IdleAnimation = "BASALT";
@@ -312,19 +326,20 @@ namespace WizardsDuel.Game
 		}
 
 		override public void OnRound () {
-			foreach(var entity in Simulator.Instance.GetObjectsAt(Parent.X, Parent.Y)) {
-				if (entity != Parent && entity.HasTag("FLYING") == false)
+			foreach (var entity in Simulator.Instance.GetObjectsAt(Parent.X, Parent.Y)) {
+				if (entity != Parent && entity.HasTag ("FLYING") == false && entity.Dressing == false) {
 					entity.AddEffect (new BurningEffect ());
+				}
 			}
 			this.initiative += Parent.Initiative - this.oldInitiative;
 			this.oldInitiative = Parent.Initiative;
+			if (Parent.Visible == false)
+				return;
 			//Logger.Info ("LavaEmitterAI", "onRound", "Current initiative " + this.startInitiative.ToString() + " parent " + this.Parent.GetHashCode().ToString());
 			if (this.status == 0 && this.Generation > 0 && this.Generation < MAX_GENERATIONS && this.firstRound == false && this.hasSpawned == false) {
-				if (this.Parent.Visible) {
-					Spawn ();
-				}
+				Spawn ();
 			}
-			if (this.initiative > this.hardenInitiative && this.status == 0) {
+			if (this.CanHarden && this.initiative > this.hardenInitiative && this.status == 0) {
 				this.status = 1;
 				Parent.OutObject.ZIndex -= 1;
 				Parent.OutObject.IdleAnimation = "BASALT";
@@ -340,7 +355,7 @@ namespace WizardsDuel.Game
 			this.firstRound = false;
 		}
 
-		private void Spawn() {
+		private void Spawn () {
 			this.hasSpawned = true;
 			var sim = Simulator.Instance;
 			for (int i = 0; i < MAX_SPAWN_COUNT; i++) {
@@ -357,11 +372,12 @@ namespace WizardsDuel.Game
 					y--;
 				//var alreadyRefreshed = false;
 				var objects = sim.world.GetObjectsAt (x, y);
-				var containsLava = objects.Exists(o => o.TemplateID == this.Parent.TemplateID && o.OutObject.IdleAnimation == "IDLE");
+				var containsLava = objects.Exists (o => o.TemplateID == this.Parent.TemplateID && o.OutObject.IdleAnimation == "IDLE");
 				if (sim.world.IsWalkable (x, y) && containsLava == false) {
 					var lava = sim.GetObject (sim.CreateObject (Parent.TemplateID, x, y));
 					if (lava != null) {
 						var ai = lava.AI as LavaAI;
+						ai.CanHarden = true;
 						ai.Initiative = this.oldInitiative + Simulator.ROUND_LENGTH;
 						ai.Generation = this.Generation + 1;
 						//lava.OutObject.Color = new SFML.Graphics.Color (255, (byte)(255 - ai.Generation * 50), 255);
@@ -380,7 +396,8 @@ namespace WizardsDuel.Game
 		private int emitInitiative = EMIT_START;
 		private int oldInitiative = 0;
 		private int stopInitiative = EMIT_END;
-		private int status = 0; // 0 idle, 1 active
+		private int status = 0;
+		// 0 idle, 1 active
 
 		public int Initiative {
 			set {
@@ -394,20 +411,24 @@ namespace WizardsDuel.Game
 		override public void OnRound () {
 			this.initiative += Parent.Initiative - this.oldInitiative;
 			this.oldInitiative = Parent.Initiative;
+			if (Parent.Visible == false)
+				return;
 			if (this.initiative > stopInitiative && this.status == 1) {
 				//Logger.Debug ("LavaEmitterAI", "onRound", "Closing");
 				this.status = 0;
 				Parent.OutObject.IdleAnimation = "IDLE";
 				Parent.OutObject.SetAnimation ("CLOSE");
 				this.Initiative = this.oldInitiative;
-			} else if (this.initiative > emitInitiative && this.status == 0) {
+			}
+			else if (this.initiative > emitInitiative && this.status == 0) {
 				//Logger.Info ("LavaEmitterAI", "onRound", "Opening");
 				var sim = Simulator.Instance;
 				this.status = 1;
 				Parent.OutObject.SetAnimation ("OPEN");
 				Parent.OutObject.IdleAnimation = "ACTIVE";
 				var lava = sim.GetObject (sim.CreateObject ("bp_fire_lava", Parent.X, Parent.Y + 1));
-				var ai = lava.AI as LavaAI;//new LavaAI ();
+				var ai = lava.AI as LavaAI;
+				ai.CanHarden = true;
 				ai.Initiative = this.oldInitiative + Simulator.ROUND_LENGTH;
 				ai.Generation = 1;
 				sim.SetAnimation (lava, "CREATE");
@@ -437,11 +458,18 @@ namespace WizardsDuel.Game
 			label = new Label ("Thank you for playing this Alpha release", 32);
 			label.AlignCenter = true;
 			label.Color = SFML.Graphics.Color.White;
-			position.Y += 200;
-			label.Position = Parent.OutObject.Position;
+			position.Y += 160;
+			label.Position = position;
 			IoManager.AddWidget (label);
 
-			label = new Label ("Lots of things will change for the final release", 32);
+			label = new Label ("An entire world will be developed in the next versions!", 32);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.White;
+			position.Y += 80;
+			label.Position = position;
+			IoManager.AddWidget (label);
+
+			label = new Label ("With new levels, bosses, hordes of enemies and new spells and combinations!", 32);
 			label.AlignCenter = true;
 			label.Color = SFML.Graphics.Color.White;
 			position.Y += 40;
@@ -455,7 +483,7 @@ namespace WizardsDuel.Game
 			label.Position = position;
 			IoManager.AddWidget (label);
 
-			label = new Label ("Contact us on http://wizardsduelgame.wordpress.com!", 32);
+			label = new Label ("Contact us on http://www.wizardsofunica.com!", 32);
 			label.AlignCenter = true;
 			label.Color = SFML.Graphics.Color.White;
 			position.Y += 40;

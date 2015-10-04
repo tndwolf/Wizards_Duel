@@ -333,6 +333,7 @@ namespace WizardsDuel.Io
 		/// Sets how many times per second to update the scene
 		/// </summary>
 		static public int FPS { 
+			get { return (int)(1000 / IoManager.frameTime); }
 			set { IoManager.frameTime = 1000 / value; }
 		}
 

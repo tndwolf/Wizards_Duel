@@ -323,6 +323,12 @@ namespace WizardsDuel.Game
 				return 0;
 			}
 		}
+
+		public bool Visible { 
+			get { return true; } 
+			set { }
+		}
+
 		#endregion
 	}
 }

@@ -39,6 +39,7 @@ namespace WizardsDuel.Game
 		/// <param name="ed">Ed.</param>
 		void Run (Simulator sim, EventManager ed);
 
+		bool Visible { get; set; }
 	}
 
 	public class EventManager {
@@ -68,6 +69,7 @@ namespace WizardsDuel.Game
 			this.userEvent = null;
 		}
 
+		private int tries = 0;
 		public void Dispatch() {
 			// first run events
 			this.eventQueueLocked = true;
@@ -99,7 +101,7 @@ namespace WizardsDuel.Game
 						//this.Replan (actor);
 					}
 				}*/
-				if (!actor.IsAnimating) {
+				if (this.tries++ > IoManager.FPS || !actor.Visible || !actor.IsAnimating) {
 					this.Initiative = actor.Initiative;
 					actor.Run (this.simulator, this);
 					if (this.WaitingForUser) {
@@ -108,6 +110,7 @@ namespace WizardsDuel.Game
 						actor.HasEnded = true;
 						this.actorQueue.Sort ();
 					}
+					this.tries = 0;
 				}
 				//if (actor.HasEnded) {
 					//this.actorQueue.Sort ();
@@ -149,6 +152,10 @@ namespace WizardsDuel.Game
 			internal set;
 		}
 
+		public Entity NextActor {
+			get { return this.actorQueue [0] as Entity; }
+		}
+
 		public void QueueObject(EventObject obj, int initiative) {
 			//Logger.Debug ("EventManager", "QueueObject", "Adding object " + obj.GetHashCode());
 			obj.Initiative = initiative;
@@ -173,6 +180,7 @@ namespace WizardsDuel.Game
 				Logger.Debug ("EventManager", "RunUserEvent", "RUNNING EVENT AT INIT " + this.Initiative.ToString ());
 				var player = simulator.GetPlayer();
 				if (this.userEvent.Run () == true) {
+					simulator.waitCountdown = IoManager.FPS * 3 / 4;
 					this.userEvent = null;
 					simulator.world.CalculateFoV (player.X, player.Y, World.FOV_UPDATE_RADIUS - 2);
 					return true;

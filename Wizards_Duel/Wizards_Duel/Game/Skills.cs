@@ -4,10 +4,9 @@ using WizardsDuel.Utils;
 using WizardsDuel.Io;
 using System.Collections.Generic;
 
-namespace WizardsDuel.Game
-{
+namespace WizardsDuel.Game {
 	public class Skill: IComparable {
-		public Skill() {
+		public Skill () {
 			this.Range = 1;
 		}
 
@@ -26,6 +25,7 @@ namespace WizardsDuel.Game
 		public string Name { get; set; }
 
 		int roundsToGo = 0;
+
 		public int RoundsToGo { 
 			get { return this.roundsToGo; }
 			set { this.roundsToGo = (value < 0) ? 0 : value; }
@@ -43,28 +43,32 @@ namespace WizardsDuel.Game
 
 		public bool OnEmpty (Entity actor, int gx, int gy) {
 			if (this.OnEmptyScript != null) {
-				Logger.Debug ("Skill", "OnEmpty", actor.ID + " " + OnEmptyScript.ToString());
+				Logger.Debug ("Skill", "OnEmpty", actor.ID + " " + OnEmptyScript.ToString ());
 				if (this.OnEmptyScript.Run (actor, null, gx, gy)) {
 					this.RoundsToGo = this.CoolDown;
 					return true;
-				} else {
+				}
+				else {
 					return false;
 				}
-			} else {
+			}
+			else {
 				return false;
 			}
 		}
 
 		public bool OnSelf (Entity actor) {
 			if (this.OnSelfScript != null) {
-				Logger.Debug ("Skill", "OnSelf", actor.ID + " " + OnSelfScript.ToString());
+				Logger.Debug ("Skill", "OnSelf", actor.ID + " " + OnSelfScript.ToString ());
 				if (this.OnSelfScript.Run (actor, actor, 0, 0)) {
 					this.RoundsToGo = this.CoolDown;
 					return true;
-				} else {
+				}
+				else {
 					return false;
 				}
-			} else {
+			}
+			else {
 				return false;
 			}
 		}
@@ -76,38 +80,51 @@ namespace WizardsDuel.Game
 				if (this.OnTargetScript.Run (actor, target, 0, 0)) {
 					this.RoundsToGo = this.CoolDown;
 					return true;
-				} else {
+				}
+				else {
 					return false;
 				}
-			} else {
+			}
+			else {
 				return false;
 			}
 		}
 
 		#region OutputUserInterface
+
 		internal Icon OutIcon { get; set; }
+
 		internal SolidBorder Border { get; set; }
+
 		internal DamageBarDecorator DamageBar { get; set; }
+
 		internal bool Show { get; set; }
+
 		#endregion
 
 		#region IComparable implementation
+
 		public int CompareTo (object obj) {
 			try {
 				//var comp = obj as Skill;
-				return (obj as Skill).Priority.CompareTo(this.Priority);
-			} catch (Exception ex) {
-				Logger.Debug ("OutObject", "CompareTo", "Trying to compare a wrong object" + ex.ToString());
+				return (obj as Skill).Priority.CompareTo (this.Priority);
+			}
+			catch (Exception ex) {
+				Logger.Debug ("OutObject", "CompareTo", "Trying to compare a wrong object" + ex.ToString ());
 				return 0;
 			}
 		}
+
 		#endregion
 	}
 
 	public class SkillBehaviour {
 		public string SelfAnimation { get; set; }
+
 		public string SelfParticle { get; set; }
+
 		public string TargetAnimation { get; set; }
+
 		public string TargetParticle { get; set; }
 
 		virtual public bool Run (Entity actor, Entity target, int gx, int gy) {
@@ -117,7 +134,7 @@ namespace WizardsDuel.Game
 	}
 
 	public class DamageBehaviour: SkillBehaviour {
-		public DamageBehaviour(int damage = 1, string damageType = Simulator.DAMAGE_TYPE_UNTYPED) {
+		public DamageBehaviour (int damage = 1, string damageType = Simulator.DAMAGE_TYPE_UNTYPED) {
 			this.Damage = damage;
 			this.DamageType = damageType;
 		}
@@ -141,7 +158,8 @@ namespace WizardsDuel.Game
 				}
 				Simulator.Instance.Attack (actor.ID, target.ID, this.Damage + bonusDamage, this.DamageType);
 				return true;
-			} else {
+			}
+			else {
 				return false;
 			}
 		}
@@ -158,7 +176,8 @@ namespace WizardsDuel.Game
 				target.OutObject.SetAnimation (this.TargetAnimation);
 				Simulator.Instance.AddEffect (target.ID, this.Effect.Clone);
 				return true;
-			} else {
+			}
+			else {
 				return false;
 			}
 		}
@@ -181,7 +200,8 @@ namespace WizardsDuel.Game
 				Simulator.Instance.CreateParticleAt (this.TargetParticle, gx, gy);
 				Simulator.Instance.CreateObject (SpawnTemplateId, gx, gy);
 				return true;
-			} else {
+			}
+			else {
 				return false;
 			}
 		}

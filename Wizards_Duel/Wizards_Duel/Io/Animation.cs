@@ -120,10 +120,11 @@ namespace WizardsDuel.Io
 		private int refTime = 0;
 		float k = 0.0f; // position on the animation [0.0 -> 1.0]
 
-		public ColorAnimation(Color startColor, Color endColor, int duration) {
+		public ColorAnimation(Color startColor, Color endColor, int duration, int delay = 0) {
 			this.EndColor = endColor;
 			this.StartColor = startColor;
-			this.endTime = duration;
+			this.refTime = -delay;
+			this.endTime = duration + delay;
 		}
 
 		public Color EndColor { get; set; }
@@ -137,6 +138,9 @@ namespace WizardsDuel.Io
 				this.k = 1.0f;
 				p.Color = this.EndColor;
 				this.hasEnded = true;
+			}
+			else if (this.refTime < 0) {
+				return;
 			}
 			else {
 				this.k = 1.0f - (float)(this.endTime - this.refTime) / (float)(this.endTime);
@@ -353,6 +357,7 @@ namespace WizardsDuel.Io
 			var icon = parent as Icon;
 			if (this.currRef > this.endRef) {
 				//var sprite = ((Icon)parent).sprite;
+				this.currFrame = this.frames.Count-1;
 				icon.Sprite = this.frames [this.frames.Count-1].rect;
 				icon.Padding = this.frames [this.frames.Count-1].offset;
 				if (this.Looping == false) {
@@ -375,6 +380,10 @@ namespace WizardsDuel.Io
 			}
 			catch {
 				this.hasEnded = true;
+			}
+			var p = parent as OutObject;
+			if (p != null) {
+				p.CurrentAnimationFrame = this.currFrame;
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-Wizard's Duel, a procedural tactical RPG
+Wizards of Unica, a procedural tactical RPG
 Copyright (C) 2014-2015  Luca Carbone
 
 This program is free software: you can redistribute it and/or modify
