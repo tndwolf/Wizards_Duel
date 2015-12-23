@@ -140,6 +140,23 @@ namespace WizardsDuel.Game {
 
 		private bool frozen;
 
+		/// <summary>
+		/// Return the first skills that matches the combo or null if none is defined.
+		/// Note that combo is sorted by this function
+		/// </summary>
+		/// <returns>The combo skill.</returns>
+		/// <param name="combo">Combo.</param>
+		public Skill GetComboSkill(List<string> combo) {
+			combo.Sort ();
+			foreach (var s in this.skills) {
+				Logger.Debug ("Entity", "GetComboSkill", "Comparing: " + String.Join(",", s.Combo.ToArray()) + " vs " + String.Join(",", combo.ToArray()));
+				if (System.Linq.Enumerable.SequenceEqual (combo, s.Combo)) {
+					return s;
+				}
+			}
+			return null;
+		}
+
 		public Skill GetPrioritySkillInRange (int range) {
 			// note that skills are sorted by priority when added
 			return this.skills.Find (x => x.RoundsToGo < 1 && x.Range <= range);
@@ -225,7 +242,7 @@ namespace WizardsDuel.Game {
 				foreach (var skill in this.skills) {
 					skill.RoundsToGo -= 1;
 					if (skill.DamageBar != null)
-						skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CoolDown;
+						skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CurrentCoolDown;
 				}
 			}
 			if (this.Frozen == false && this.Dressing == false && this.Health > 0) {

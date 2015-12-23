@@ -101,7 +101,13 @@ namespace WizardsDuel.States
 			} else if (inputs.Command == InputCommands.DOWN_LEFT) {
 				Simulator.Instance.SetUserEvent (new ShiftEvent (Simulator.PLAYER_ID, -1, 1));
 			} else if (inputs.Command == InputCommands.SKIP) {
-				Simulator.Instance.SetUserEvent (new SkipEvent (Simulator.PLAYER_ID));
+				if (Simulator.Instance.IsGameOver == true) {
+					IoManager.FadeTo (Color.Black, 500);
+					Simulator.Instance.LoadArea ();
+				}
+				else {
+					Simulator.Instance.SetUserEvent (new SkipEvent (Simulator.PLAYER_ID));
+				}
 			} else if (inputs.Command == InputCommands.TOGGLE_GRID) {
 				Simulator.Instance.ToggleGrid ();
 			} else {
@@ -122,24 +128,31 @@ namespace WizardsDuel.States
 				Simulator.Instance.DestroyObject ("tmp");
 				break;*/
 
-			case "1":
-				Simulator.Instance.SelectedSkill = 1;
-				break;
+				/*case "1":
+					if (inputs.Command == InputCommands.MULTIPLE_SELECTION) {
+						Simulator.Instance.SelectedSkill = 1;
+						Logger.Debug ("TestState", "Logic", "++++++++++++++++++++++++++ MULTI! " + inputs.Unicode);
+					}
+					else {
+						Logger.Debug ("TestState", "Logic", "-------------------------- NON-MULTI! " + inputs.Unicode);
+						Simulator.Instance.SelectedSkill = 1;
+					}
+					break;
 
-			case "2":
-				Simulator.Instance.SelectedSkill = 2;
-				break;
+				case "2":
+					Simulator.Instance.SelectedSkill = 2;
+					break;
 
-			case "3":
-				Simulator.Instance.SelectedSkill = 3;
-				break;
+				case "3":
+					Simulator.Instance.SelectedSkill = 3;
+					break;
 
-			case "4":
-				Simulator.Instance.SelectedSkill = 4;
-				break;
+				case "4":
+					Simulator.Instance.SelectedSkill = 4;
+					break;*/
 
-			default:
-				break;
+				default:
+					break;
 			}
 
 			Simulator.Instance.DoLogic ();

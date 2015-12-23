@@ -42,6 +42,7 @@ namespace WizardsDuel.Io
 		MOUSE_RIGHT,
 		QUIT,
 		SKIP,
+		MULTIPLE_SELECTION,
 		COUNT
 	}
 
@@ -92,6 +93,9 @@ namespace WizardsDuel.Io
 		static Dictionary<string, Texture> textures = new Dictionary<string, Texture>();
 		static RenderWindow window;
 
+		static List<IClickable> clickables = new List<IClickable>();
+		static List<ITextArea> textareas = new List<ITextArea>();
+
 		/// <summary>
 		/// Adds the widget to the drawing pipeline. If the widget is clickable or
 		/// accepts text inputs it will be added to the event dispatching queue
@@ -111,19 +115,40 @@ namespace WizardsDuel.Io
 
 			var clickable = widget as IClickable;
 			if (clickable != null) {
-				IoManager.window.MouseMoved += clickable.OnMouseMove;
+				/*IoManager.window.MouseMoved += clickable.OnMouseMove;
 				IoManager.window.MouseButtonPressed += clickable.OnMousePressed;
-				IoManager.window.MouseButtonReleased += clickable.OnMouseReleased;
+				IoManager.window.MouseButtonReleased += clickable.OnMouseReleased;*/
+				IoManager.clickables.Add (clickable);
 			}
 			var textarea = widget as ITextArea;
 			if (textarea != null) {
-				IoManager.window.KeyPressed += textarea.OnKeyPressed;
+				IoManager.textareas.Add (textarea);
+				/*IoManager.window.KeyPressed += textarea.OnKeyPressed;
 				IoManager.window.KeyReleased += textarea.OnKeyReleased;
-				IoManager.window.TextEntered += textarea.OnTextEntered; 
+				IoManager.window.TextEntered += textarea.OnTextEntered; */
 			}
 		}
 
 		static public string AssetDirectory { get; set; }
+
+		static public void Pack() {
+			for (var i = IoManager.clickables.Count-1; i >= 0; i--) {
+				var clickable = IoManager.clickables[i];
+				if (clickable != null) {
+					IoManager.window.MouseMoved += clickable.OnMouseMove;
+					IoManager.window.MouseButtonPressed += clickable.OnMousePressed;
+					IoManager.window.MouseButtonReleased += clickable.OnMouseReleased;
+				}
+			}
+			for (var i = IoManager.textareas.Count-1; i >= 0; i--) {
+				var textarea = IoManager.textareas[i];
+				if (textarea != null) {
+					IoManager.window.KeyPressed += textarea.OnKeyPressed;
+					IoManager.window.KeyReleased += textarea.OnKeyReleased;
+					IoManager.window.TextEntered += textarea.OnTextEntered; 
+				}
+			}
+		}
 
 		static public void Clear() {
 			IoManager.ClearWidgets();
@@ -195,6 +220,10 @@ namespace WizardsDuel.Io
 			else if (Keyboard.IsKeyPressed (Keyboard.Key.X) || Keyboard.IsKeyPressed (Keyboard.Key.Down)) {
 				IoManager.inputs.Command = InputCommands.DOWN;
 			}
+
+			if (Keyboard.IsKeyPressed (Keyboard.Key.LControl) || Keyboard.IsKeyPressed (Keyboard.Key.RControl)) {
+				IoManager.inputs.Command = InputCommands.MULTIPLE_SELECTION;
+			}
 			//else if (Keyboard.IsKeyPressed (Keyboard.Key.Space)) {
 			//	IoManager.inputs.Command = InputCommands.SKIP;
 			//}
@@ -249,7 +278,7 @@ namespace WizardsDuel.Io
 			var time = IoManager.clock.ElapsedMilliseconds;
 			var delta = time - IoManager.referenceTime;
 			if (delta > IoManager.frameTime) {
-				IoManager.window.DispatchEvents();
+				//IoManager.window.DispatchEvents();
 				IoManager.window.Clear();
 				IoManager.deltaTime = delta;
 				IoManager.referenceTime = time;
@@ -342,7 +371,8 @@ namespace WizardsDuel.Io
 		}
 
 		public static Inputs GetInputs() {
-			window.DispatchEvents ();
+			IoManager.window.DispatchEvents ();
+			//IoManager.window.WaitAndDispatchEvents ();
 			IoManager.CheckKeyboard (); // KeyPressed is unrealiable, it inserts delays
 			inputRes.Command = inputs.Command;
 			inputRes.Unicode = inputs.Unicode;
@@ -400,6 +430,8 @@ namespace WizardsDuel.Io
 				IoManager.inputs.Command = InputCommands.TOGGLE_GRID;
 			} else if (e.Code == Keyboard.Key.Space) {
 				IoManager.inputs.Command = InputCommands.SKIP;
+			} else if (e.Code == Keyboard.Key.LControl || e.Code == Keyboard.Key.RControl) {
+				IoManager.inputs.Command = InputCommands.MULTIPLE_SELECTION;
 			}
 		}
 

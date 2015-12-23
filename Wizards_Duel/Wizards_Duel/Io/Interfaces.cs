@@ -1,5 +1,5 @@
 ﻿// Wizard's Duel, a procedural tactical RPG
-// Copyright (C) 2014  Luca Carbone
+// Copyright (C) 2015  Luca Carbone
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,6 +20,9 @@ using SFML.Graphics;
 
 namespace WizardsDuel.Io
 {
+	/// <summary>
+	/// Interface for clickable widgets
+	/// </summary>
 	public interface IClickable {
 		bool Enabled { get; set; }
 
@@ -41,6 +44,9 @@ namespace WizardsDuel.Io
 		void OnMouseReleased(object sender, MouseButtonEventArgs e);
 	}
 
+	/// <summary>
+	/// Interface for a widget that accepts keyboard inputs
+	/// </summary>
 	public interface ITextArea: IClickable {
 		bool HasFocus { get; set; }
 

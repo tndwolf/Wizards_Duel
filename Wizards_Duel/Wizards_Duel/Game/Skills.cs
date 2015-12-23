@@ -8,9 +8,14 @@ namespace WizardsDuel.Game {
 	public class Skill: IComparable {
 		public Skill () {
 			this.Range = 1;
+			this.Combo = new List<string>();
 		}
 
+		public List<string> Combo { get; set; }
+
 		public int CoolDown { get; set; }
+
+		public int CurrentCoolDown { get; set; }
 
 		public string IconTexture { get; set; }
 
@@ -46,6 +51,7 @@ namespace WizardsDuel.Game {
 				Logger.Debug ("Skill", "OnEmpty", actor.ID + " " + OnEmptyScript.ToString ());
 				if (this.OnEmptyScript.Run (actor, null, gx, gy)) {
 					this.RoundsToGo = this.CoolDown;
+					this.CurrentCoolDown = this.CoolDown;
 					return true;
 				}
 				else {
@@ -62,6 +68,7 @@ namespace WizardsDuel.Game {
 				Logger.Debug ("Skill", "OnSelf", actor.ID + " " + OnSelfScript.ToString ());
 				if (this.OnSelfScript.Run (actor, actor, 0, 0)) {
 					this.RoundsToGo = this.CoolDown;
+					this.CurrentCoolDown = this.CoolDown;
 					return true;
 				}
 				else {
@@ -79,6 +86,7 @@ namespace WizardsDuel.Game {
 				Logger.Debug ("Skill", "OnTarget", actor.ID + " vs " + target.ID);
 				if (this.OnTargetScript.Run (actor, target, 0, 0)) {
 					this.RoundsToGo = this.CoolDown;
+					this.CurrentCoolDown = this.CoolDown;
 					return true;
 				}
 				else {
@@ -92,7 +100,7 @@ namespace WizardsDuel.Game {
 
 		#region OutputUserInterface
 
-		internal Icon OutIcon { get; set; }
+		internal ButtonIcon OutIcon { get; set; }
 
 		internal SolidBorder Border { get; set; }
 

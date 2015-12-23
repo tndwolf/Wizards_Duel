@@ -1,0 +1,11 @@
+\Assets
+===========================================================================================
+
+By downloading any product from Daniele Lasalandra, you agree to the following:
+
+-All products remain property of Daniele Lasalandra.
+-Products may not be used by the licensee in any commercial projects.
+-Products may not be resold.
+
+This license applies to all contents under the Assets folder if not property of other 
+parties as explicited in other license files.

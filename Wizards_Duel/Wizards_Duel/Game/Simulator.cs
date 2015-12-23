@@ -434,10 +434,11 @@ namespace WizardsDuel.Game {
 			player.OutIcon.AddDecorator (player.DamageBar);
 			player.OutIcon.Position = new Vector2f (UI_VERTICAL_START, y);
 			IoManager.AddWidget (player.OutIcon);
+			int i = 1;
 			foreach (var s in player.skills) {
 				if (s.Show) {
 					y += UI_VERTICAL_SPACE;
-					s.OutIcon = new Icon (s.IconTexture, s.IconRect);
+					s.OutIcon = new ButtonIcon (s.IconTexture, s.IconRect);
 					s.OutIcon.ScaleX = UI_SCALE;
 					s.OutIcon.ScaleY = UI_SCALE;
 					s.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
@@ -446,7 +447,9 @@ namespace WizardsDuel.Game {
 					s.DamageBar.InvertAxis = true;
 					s.OutIcon.AddDecorator (s.DamageBar);
 					s.OutIcon.Position = new Vector2f (UI_VERTICAL_START, y);
+					s.OutIcon.MousePressed = (() => Simulator.Instance.SelectedSkill = i);
 					IoManager.AddWidget (s.OutIcon);
+					i++;
 				}
 			}
 			foreach (var s in player.skills) {
@@ -462,11 +465,14 @@ namespace WizardsDuel.Game {
 			this.waitIcon.Position = new Vector2f (IoManager.Width / 2 + 12, IoManager.Height / 2 - 64);
 			this.waitIcon.Alpha = 0;
 			IoManager.AddWidget (this.waitIcon);
+			IoManager.Pack ();
 		}
 
 		public int InitiativeCount {
 			get { return events.Initiative; }
 		}
+
+		public bool IsGameOver { get; set; }
 
 		public bool IsSafeToWalk (Entity walker, int ex, int ey, bool considerHazards = true) {
 			var res = this.world.IsWalkable (ex, ey);
@@ -550,6 +556,7 @@ namespace WizardsDuel.Game {
 		}
 
 		public void LoadArea () {
+			this.IsGameOver = false;
 			this.world = GameFactory.LoadGame (DEFAULT_DATA);
 			this.events = new EventManager (this);
 			this.events.QueueObject (this.world, 15);
@@ -618,6 +625,68 @@ namespace WizardsDuel.Game {
 				// of the "Layers" of the WorldView
 				//res.OutObject.Position = new Vector2f ((res.X+1) * this.cellWidth, res.Y * this.cellHeight - this.cellHeight/4);
 				res.OutObject.Position = new Vector2f ((res.X) * this.CellWidth, (res.Y) * this.CellHeight + this.CellObjectOffset);
+			}
+		}
+
+		bool even = false;
+		public int MultiSelectedSkill { 
+			set {
+				// XXX This whole block is tupid, but keypresses (not key down+key up, only keydown)
+				// are dispatched twice, it seems in the same time, you can only check it here
+				// in the dispatching function this same thing does not work :|
+				if (even == false) {
+					even = true;
+				}
+				else {
+					even = false;
+					return;
+				}
+				// XXX end of the stupid repetition block :|
+				Logger.Debug ("Simulator", "MultiSelectedSkill", "MULTI SELECTION----------------");
+				var i = 0;
+				var selected = 0;
+				var combo = new List<string> ();
+				foreach (var s in GetPlayer().skills) {
+					if (s.Show) {
+						if (++i == value && s.RoundsToGo < 1) {
+							//Logger.Debug ("Simulator", "MultiSelectedSkill", "Processing " + s.ID + " vs " + value.ToString());
+							if (s.Border.Color.Equals(SELECTED_SKILL_COLOR)) {
+								Logger.Debug ("Simulator", "MultiSelectedSkill", "Deselection " + s.ID + " vs " + value.ToString());
+								s.Border.Color = UNSELECTED_SKILL_COLOR;
+							}
+							else {
+								Logger.Debug ("Simulator", "MultiSelectedSkill", "Selecting " + s.ID + " vs " + value.ToString());
+								s.Border.Color = SELECTED_SKILL_COLOR;
+							}
+						}
+						// nevertheless count if the skill is selected
+						if (s.Border.Color.Equals (SELECTED_SKILL_COLOR)) {
+							combo.Add (s.ID);
+							selected++;
+						}
+					}
+				}
+				// if nothing selected just go to the default skill
+				if (selected < 1) {
+					SelectedSkill = 1;
+					Logger.Debug ("Simulator", "MultiSelectedSkill", "Clearing selections");
+				}
+				else if (selected == 1) {
+					Logger.Debug ("Simulator", "MultiSelectedSkill", "Single found, selecting " + value.ToString());
+					SelectedSkill = value;
+				}
+				else {
+					Logger.Debug ("Simulator", "MultiSelectedSkill", "Checking " + String.Join(", ", combo.ToArray()));
+					var skill = GetPlayer ().GetComboSkill (combo);
+					if (skill != null) {
+						Logger.Debug ("Simulator", "MultiSelectedSkill", "Found! "+ skill.ID);
+						currentSkill = skill;
+					}
+					else {
+						Logger.Debug ("Simulator", "MultiSelectedSkill", "Not Found");
+						SelectedSkill = 1;
+					}
+				}
 			}
 		}
 
@@ -788,10 +857,25 @@ namespace WizardsDuel.Game {
 				}
 			} 
 			if (res == true) {
-				skill.RoundsToGo = skill.CoolDown;
-				if (skill.DamageBar != null) {
-					skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CoolDown;
+				//skill.RoundsToGo = skill.CurrentCoolDown;
+				if (skill.Combo != null) {
+					foreach (var s in actor.skills) {
+						if (skill.Combo.Contains(s.ID)) {
+							s.RoundsToGo = skill.CurrentCoolDown;
+							s.CurrentCoolDown = skill.CurrentCoolDown;
+							if (s.DamageBar != null) {
+								s.DamageBar.Level = (float)s.RoundsToGo / (float)s.CurrentCoolDown;
+							}
+						}
+					}
 				}
+				/*else {
+					skill.CurrentCoolDown = skill.CoolDown;
+					skill.RoundsToGo = skill.CoolDown;
+					if (skill.DamageBar != null) {
+						skill.DamageBar.Level = (float)skill.RoundsToGo / (float)skill.CurrentCoolDown;
+					}
+				}*/
 			}
 			return res;
 		}

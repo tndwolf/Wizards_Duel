@@ -121,9 +121,12 @@ namespace WizardsDuel.Game {
 				for (int s = 0; s < skills.Count; s++) {
 					var skillId = XmlUtilities.GetString (skills [s], "ref");
 					var xmlSkill = GameFactory.xdoc.SelectSingleNode ("//skill[@id='" + skillId + "']");
-					var skill = LoadSkill (xmlSkill);
-					skill.Show = XmlUtilities.GetBool (skills [s], "show");
-					res.AddSkill (skill);
+					var combo = XmlUtilities.GetStringArray (skills [s], "combo");
+					var skill = LoadSkill (xmlSkill, combo[0] == string.Empty ? null : combo);
+					if (skill != null) {
+						skill.Show = XmlUtilities.GetBool (skills [s], "show");
+						res.AddSkill (skill);
+					}
 				}
 
 				var variables = template.SelectNodes ("./var");
@@ -195,10 +198,13 @@ namespace WizardsDuel.Game {
 
 		static public ParticleSystem LoadParticleFromTemplate (string templateId, float x, float y, ObjectsLayer layer, bool flip = false) {
 			try {
-				var xCoeff = flip ? -1f : 1f;
-				var angleCoeff = flip ? 3.1415f : 0f;
 				var res = new ParticleSystem (templateId);
 				XmlNode template = GameFactory.xdoc.SelectSingleNode ("//particle[@id='" + templateId + "']");
+				if (XmlUtilities.GetString (template, "flip", "true") == "false") {
+					flip = false;
+				}
+				var xCoeff = flip ? -1f : 1f;
+				var angleCoeff = flip ? 3.1415f : 0f;
 				res.TTL = XmlUtilities.GetInt (template, "ttl");
 				if (res.TTL < 0)
 					res.TTL = int.MaxValue;
@@ -393,9 +399,10 @@ namespace WizardsDuel.Game {
 			}
 		}
 
-		static public Skill LoadSkill (XmlNode skillRoot) {
+		static public Skill LoadSkill (XmlNode skillRoot, string[] combo = null) {
 			Skill res = new Skill ();
 			res.CoolDown = XmlUtilities.GetInt (skillRoot, "cooldown");
+			res.CurrentCoolDown = res.CoolDown;
 			res.ID = XmlUtilities.GetString (skillRoot, "id");
 			res.Name = XmlUtilities.GetString (skillRoot, "name");
 			res.Priority = XmlUtilities.GetInt (skillRoot, "priority");
@@ -404,6 +411,11 @@ namespace WizardsDuel.Game {
 			res.MouseIconTexture = XmlUtilities.GetString (skillRoot, "mouseIconTexture");
 			res.IconRect = XmlUtilities.GetIntRect (skillRoot, "iconRect", new IntRect (0, 0, 0, 0));
 			res.MouseIconRect = XmlUtilities.GetIntRect (skillRoot, "mouseIconRect", new IntRect (0, 0, 0, 0));
+			if (combo != null) {
+				res.Combo = new System.Collections.Generic.List<string> (combo);
+				res.Combo.Sort ();
+				Logger.Debug ("GameFactory", "LoadSkill", "Found combo skill: " + String.Join(",", res.Combo.ToArray()));
+			}
 			var scripts = skillRoot.SelectNodes ("./script");
 			for (int s = 0; s < scripts.Count; s++) {
 				var type = XmlUtilities.GetString (scripts [s], "type");

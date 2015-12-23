@@ -160,5 +160,45 @@ namespace WizardsDuel.Io
 			}
 		}
 	}
+
+	public class ButtonIcon: Icon, IClickable {
+		public ButtonIcon(string iconFileName, IntRect sprite): base(iconFileName, sprite) {}
+
+		virtual public bool Contains(int x, int y) {
+			return x > this.OffsetPosition.X
+				&& x < this.OffsetPosition.X + this.Width
+				&& y > this.OffsetPosition.Y
+				&& y < this.OffsetPosition.Y + this.Height;
+		}
+
+		override public void Draw(RenderTarget target, RenderStates states) {
+			base.Draw(target, states);
+			this.OffsetPosition = states.Transform.TransformPoint(this.Position);
+		}
+
+		public Action MousePressed;
+
+		#region IClickable implementation
+		public void OnMouseMove (object sender, MouseMoveEventArgs e) {
+			return;
+		}
+
+		public void OnMousePressed (object sender, MouseButtonEventArgs e) {
+			if (this.Contains (e.X, e.Y)) {
+				this.MousePressed ();
+			}
+		}
+
+		public void OnMouseReleased (object sender, MouseButtonEventArgs e) {
+			return;
+		}
+
+		public bool Enabled { get; set; }
+
+		public Vector2f OffsetPosition { get; set; }
+		#endregion
+
+
+	}
 }
 

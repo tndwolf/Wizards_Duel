@@ -447,11 +447,20 @@ namespace WizardsDuel.Game {
 		}
 
 		override public void OnDeath () {
+			Simulator.Instance.IsGameOver = true;
+
 			var position = new Vector2f (IoManager.Width / 2, IoManager.Height / 2 - 100);
 			Logger.Info ("UserAI", "OnDeath", "PLAYER is Dead");
 			var label = new Label ("YOU HAVE FALLEN", 48);
 			label.AlignCenter = true;
 			label.Color = SFML.Graphics.Color.Red;
+			label.Position = position;
+			IoManager.AddWidget (label);
+
+			label = new Label ("Press SPACE to restart", 48);
+			label.AlignCenter = true;
+			label.Color = SFML.Graphics.Color.White;
+			position.Y += 50;
 			label.Position = position;
 			IoManager.AddWidget (label);
 

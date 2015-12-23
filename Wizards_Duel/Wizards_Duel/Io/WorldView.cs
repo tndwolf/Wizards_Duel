@@ -33,7 +33,7 @@ namespace WizardsDuel.Io
 		COUNT
 	}
 
-	public class WorldView: Widget, IClickable {
+	public class WorldView: Widget, IClickable, ITextArea {
 		public List<Layer> layers = new List<Layer>();
 		private Dictionary<string, int> namedLayers = new Dictionary<string, int> ();
 		private int objectsLayer = -1;
@@ -203,14 +203,17 @@ namespace WizardsDuel.Io
 		}
 
 		public void OnMousePressed (object sender, MouseButtonEventArgs e) {
-			var gx = (int)(this.referenceObject.CenterX - this.HalfWidth + e.X) / this.CellWidth;
-			var gy = (int)(this.referenceObject.CenterY - this.HalfHeight + e.Y) / this.CellHeight;
-			var gl = this.layers [this.gridLayer] as GridLayer;
- 			gl.Selected = new Vector2i (gx, gy);
-			if (e.Button == Mouse.Button.Right) {
-				Simulator.Instance.Select (gx, gy);
-			} else {
-				Simulator.Instance.SetUserEvent (new ClickEvent (Simulator.PLAYER_ID, gx, gy));
+			if (referenceObject != null) {
+				var gx = (int)(this.referenceObject.CenterX - this.HalfWidth + e.X) / this.CellWidth;
+				var gy = (int)(this.referenceObject.CenterY - this.HalfHeight + e.Y) / this.CellHeight;
+				var gl = this.layers [this.gridLayer] as GridLayer;
+				gl.Selected = new Vector2i (gx, gy);
+				if (e.Button == Mouse.Button.Right) {
+					Simulator.Instance.Select (gx, gy);
+				}
+				else {
+					Simulator.Instance.SetUserEvent (new ClickEvent (Simulator.PLAYER_ID, gx, gy));
+				}
 			}
 		}
 
@@ -235,7 +238,62 @@ namespace WizardsDuel.Io
 				throw new NotImplementedException ();
 			}
 		}
+		#endregion
 
+		#region ITextArea
+		public void OnKeyPressed (object sender, KeyEventArgs e) {
+			switch (e.Code) {
+				case Keyboard.Key.Num1:
+				case Keyboard.Key.Numpad1:
+					if (e.Control) {
+						Simulator.Instance.MultiSelectedSkill = 1;
+					}
+					else {
+						Simulator.Instance.SelectedSkill = 1;
+					}
+					return;
+				
+				case Keyboard.Key.Num2:
+				case Keyboard.Key.Numpad2:
+					if (e.Control) {
+						Simulator.Instance.MultiSelectedSkill = 2;
+					}
+					else {
+						Simulator.Instance.SelectedSkill = 2;
+					}
+					break;
+
+				case Keyboard.Key.Num3:
+				case Keyboard.Key.Numpad3:
+					if (e.Control) {
+						Simulator.Instance.MultiSelectedSkill = 3;
+					}
+					else {
+						Simulator.Instance.SelectedSkill = 3;
+					}
+					break;
+
+				case Keyboard.Key.Num4:
+				case Keyboard.Key.Numpad4:
+					if (e.Control) {
+						Simulator.Instance.MultiSelectedSkill = 4;
+					}
+					else {
+						Simulator.Instance.SelectedSkill = 4;
+					}
+					break;
+			}
+		}
+
+		public void OnKeyReleased (object sender, KeyEventArgs e) {
+			return;
+		}
+
+		public void OnTextEntered (object sender, TextEventArgs e) {
+			return;
+		}
+
+		public bool HasFocus { get; set; }
 		#endregion
 
 		#region rule management
