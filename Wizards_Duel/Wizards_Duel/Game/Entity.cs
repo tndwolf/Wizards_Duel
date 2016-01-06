@@ -13,6 +13,7 @@ namespace WizardsDuel.Game {
 		public List<Effect> effects = new List<Effect> ();
 		public WizardsDuel.Io.OutObject OutObject = null;
 		public List<Skill> skills = new List<Skill> ();
+		public string SpawnedBy = string.Empty;
 		public List<string> Tags = new List<string> ();
 		public int Threat = 0;
 		public Dictionary<string, int> Vars = new Dictionary<string, int> ();
@@ -67,6 +68,16 @@ namespace WizardsDuel.Game {
 				this._AI = value;
 				//this._AI.onCreate ();
 			}
+		}
+
+		public int ChangeVar (string name, int delta) {
+			if (this.Vars.ContainsKey(name) == true) {
+				this.Vars[name] += delta;
+			}
+			else {
+				this.Vars[name] = delta;
+			}
+			return this.Vars[name];
 		}
 
 		/// <summary>
@@ -211,6 +222,15 @@ namespace WizardsDuel.Game {
 
 		public void RemoveTag (string tag) {
 			this.Tags.Remove (tag);
+		}
+
+		public void ResetSkills() {
+			foreach (var skill in this.skills) {
+				skill.CurrentCoolDown = skill.CoolDown;
+				skill.RoundsToGo = 0;
+				if (skill.Border != null) 
+					skill.Border.Color = Simulator.UNSELECTED_SKILL_COLOR;
+			}
 		}
 
 		public void SetVar (string name, int value) {

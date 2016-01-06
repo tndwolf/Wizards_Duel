@@ -55,6 +55,7 @@ namespace WizardsDuel.Io
 
 	public static class IoManager {
 		public const string DEFAULT_FONT = "";
+		public static IntRect DEFAULT_POINTER = new IntRect(520, 16, 8, 8);
 		public const string DEFAULT_WIDGET_ID = "DWID";
 
 		private static string ASSETS_DIRECTORY = "Assets" + Path.DirectorySeparatorChar;
@@ -87,6 +88,7 @@ namespace WizardsDuel.Io
 		static Dictionary<string, Font> fonts = new Dictionary<string, Font>();
 		static BackgroundMusic music;
 		static Dictionary<string, Widget> namedWidgets = new Dictionary<string, Widget>();
+		static private Icon pointer;
 		static long referenceTime;
 		static Frame root;
 		static Dictionary<string, Sound> sounds = new Dictionary<string, Sound>();
@@ -135,19 +137,43 @@ namespace WizardsDuel.Io
 			for (var i = IoManager.clickables.Count-1; i >= 0; i--) {
 				var clickable = IoManager.clickables[i];
 				if (clickable != null) {
-					IoManager.window.MouseMoved += clickable.OnMouseMove;
-					IoManager.window.MouseButtonPressed += clickable.OnMousePressed;
-					IoManager.window.MouseButtonReleased += clickable.OnMouseReleased;
+					RegisterToMouse (clickable);
 				}
 			}
 			for (var i = IoManager.textareas.Count-1; i >= 0; i--) {
 				var textarea = IoManager.textareas[i];
 				if (textarea != null) {
-					IoManager.window.KeyPressed += textarea.OnKeyPressed;
-					IoManager.window.KeyReleased += textarea.OnKeyReleased;
-					IoManager.window.TextEntered += textarea.OnTextEntered; 
+					RegisterToKeyboard (textarea);
 				}
 			}
+		}
+
+		static public void RegisterToMouse(IClickable clickable) {
+			mouseDelegates.Add (clickable);
+			IoManager.window.MouseMoved += clickable.OnMouseMove;
+			IoManager.window.MouseButtonPressed += clickable.OnMousePressed;
+			IoManager.window.MouseButtonReleased += clickable.OnMouseReleased;
+		}
+
+		static public void RegisterToKeyboard(ITextArea textarea) {
+			keyDelegates.Add (textarea);
+			IoManager.window.KeyPressed += textarea.OnKeyPressed;
+			IoManager.window.KeyReleased += textarea.OnKeyReleased;
+			IoManager.window.TextEntered += textarea.OnTextEntered; 
+		}
+
+		static public void UnregisterToMouse(IClickable clickable) {
+			IoManager.window.MouseMoved -= clickable.OnMouseMove;
+			IoManager.window.MouseButtonPressed -= clickable.OnMousePressed;
+			IoManager.window.MouseButtonReleased -= clickable.OnMouseReleased;
+			mouseDelegates.Remove (clickable);
+		}
+
+		static public void UnregisterToKeyboard(ITextArea textarea) {
+			IoManager.window.KeyPressed -= textarea.OnKeyPressed;
+			IoManager.window.KeyReleased -= textarea.OnKeyReleased;
+			IoManager.window.TextEntered -= textarea.OnTextEntered; 
+			keyDelegates.Remove (textarea);
 		}
 
 		static public void Clear() {
@@ -161,21 +187,15 @@ namespace WizardsDuel.Io
 			IoManager.sounds.Clear();
 		}
 
+		static List<IClickable> mouseDelegates = new List<IClickable>();
+		static List<ITextArea> keyDelegates = new List<ITextArea>();
 		static public void ClearWidgets() {
-			foreach (var widget in IoManager.root) {
-				// unsubscribe all the widgets before clearing them
-				var clickable = widget as IClickable;
-				if (clickable != null) {
-					IoManager.window.MouseMoved -= clickable.OnMouseMove;
-					IoManager.window.MouseButtonPressed -= clickable.OnMousePressed;
-					IoManager.window.MouseButtonReleased -= clickable.OnMouseReleased;
-				}
-				var textarea = widget as ITextArea;
-				if (textarea != null) {
-					IoManager.window.KeyPressed -= textarea.OnKeyPressed;
-					IoManager.window.KeyReleased -= textarea.OnKeyReleased;
-					IoManager.window.TextEntered -= textarea.OnTextEntered; 
-				}
+			//XXX inverse foreach (to remove the delegates)
+			for (var i = keyDelegates.Count - 1; i >= 0; i--) {
+				UnregisterToKeyboard (keyDelegates[i]);
+			}
+			for (var i = mouseDelegates.Count - 1; i >= 0; i--) {
+				UnregisterToMouse (mouseDelegates[i]);
 			}
 			IoManager.root.Clear();
 			IoManager.namedWidgets.Clear ();
@@ -297,6 +317,7 @@ namespace WizardsDuel.Io
 						Logger.Debug ("IoManager", "Draw", "Ending fade at " + IoManager.Time.ToString());
 				}
 				IoManager.window.Draw (IoManager.fadeOverlay);
+				IoManager.window.Draw (IoManager.pointer);
 				IoManager.window.Display();
 				if (IoManager.music != null) IoManager.music.Update (IoManager.Time);
 			}
@@ -328,6 +349,7 @@ namespace WizardsDuel.Io
 					Logger.Debug ("IoManager", "Draw", "Ending fade at " + IoManager.Time.ToString());
 			}
 			IoManager.window.Draw (IoManager.fadeOverlay);
+			IoManager.window.Draw (IoManager.pointer);
 			IoManager.window.Display();
 			if (IoManager.music != null) IoManager.music.Update (IoManager.Time);
 		}
@@ -445,13 +467,18 @@ namespace WizardsDuel.Io
 			IoManager.clock.Start();
 			IoManager.FPS = 60;
 
+			IoManager.window.SetMouseCursorVisible (false);
+			IoManager.pointer = new Icon ("00_base_pc_fx.png", IoManager.DEFAULT_POINTER);
+			IoManager.pointer.ScaleX = 2;
+			IoManager.pointer.ScaleY = 2;
+
 			//IoManager.root.X = 64;
 			IoManager.fadeOverlay.Position = new Vector2f(0f, 0f);
 			IoManager.fadeOverlay.Size = new Vector2f(width, height);
 			IoManager.fadeOverlay.FillColor = IoManager.fadeEndColor;
 
 			IoManager.window.Closed += new EventHandler(IoManager.OnClosed);
-			//IoManager.window.MouseMoved += new EventHandler<MouseMoveEventArgs> (IoManager.MouseMove);
+			IoManager.window.MouseMoved += new EventHandler<MouseMoveEventArgs> (IoManager.MouseMove);
 			IoManager.window.MouseButtonPressed += new EventHandler<MouseButtonEventArgs> (IoManager.MousePressed);
 			IoManager.window.KeyPressed += new EventHandler<KeyEventArgs>(IoManager.KeyPressed);
 			IoManager.window.TextEntered += new EventHandler<TextEventArgs> (IoManager.TextEntered);
@@ -561,6 +588,7 @@ namespace WizardsDuel.Io
 		/// <param name="sender">Sender.</param>
 		/// <param name="e">Event.</param>
 		private static void MouseMove(object sender, MouseMoveEventArgs e) {
+			IoManager.pointer.Position = new Vector2f (e.X, e.Y);
 			IoManager.inputs.MouseX = e.X;
 			IoManager.inputs.MouseY = e.Y;
 		}
@@ -616,6 +644,22 @@ namespace WizardsDuel.Io
 			}
 		}
 
+		/// <summary>
+		/// Sets the mouse pointer's sprite.
+		/// </summary>
+		/// <param name="rect">Rect.</param>
+		/// <param name="scale">Scale.</param>
+		public static void SetPointer(IntRect rect, float scale = 2f) {
+			IoManager.pointer.Sprite = rect;
+			IoManager.pointer.ScaleX = scale;
+			IoManager.pointer.ScaleY = scale;
+		}
+
+		/// <summary>
+		/// Sets the size of the window.
+		/// </summary>
+		/// <param name="width">Width.</param>
+		/// <param name="height">Height.</param>
 		public static void SetSize(int width, int height) {
 			IoManager.window.Size = new Vector2u ((uint)width, (uint)height);
 		}
@@ -634,6 +678,10 @@ namespace WizardsDuel.Io
 			get { return referenceTime; }
 		}
 
+		/// <summary>
+		/// Gets the width of the window.
+		/// </summary>
+		/// <value>The width.</value>
 		public static int Width {
 			get { return (int)IoManager.window.Size.X; }
 		}

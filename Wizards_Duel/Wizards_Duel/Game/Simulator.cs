@@ -42,7 +42,7 @@ namespace WizardsDuel.Game {
 		public readonly Color COOLDOWN_BAR_COLOR = new Color (0, 0, 0, 127);
 		public readonly Color DAMAGE_BAR_COLOR = new Color (255, 0, 0, 127);
 		public readonly Color SELECTED_SKILL_COLOR = Color.Cyan;
-		public readonly Color UNSELECTED_SKILL_COLOR = new Color (127, 127, 127);
+		public static readonly Color UNSELECTED_SKILL_COLOR = new Color (127, 127, 127);
 		public const string TARGET_ICON_ID = "TARGET_ICON_ID";
 		public const int UI_VERTICAL_START = 16;
 		public const int UI_VERTICAL_SPACE = 96;
@@ -87,8 +87,8 @@ namespace WizardsDuel.Game {
 					var light = this.world.worldView.LightLayer.AddLight (0f, 0f, radius, color);
 					light.Parent = en.OutObject;
 				}
-			}
-			catch {
+			} catch (Exception ex) {
+				Logger.Error ("Simulator", "AddLight", "Error for " + oid + ": " + ex.ToString());
 			}
 		}
 
@@ -98,16 +98,20 @@ namespace WizardsDuel.Game {
 		}
 
 		public void Attack (string attackerId, string targetId, int damage, string damageType) {
-			var actor = GetObject (attackerId);
-			var target = GetObject (targetId);
-			Logger.Debug ("Simulator", "Attack", actor.ID + " attacks " + target.ID);
-			if (actor.X != target.X && target.Static == false) {
-				actor.OutObject.Facing = (actor.X < target.X) ? Facing.RIGHT : Facing.LEFT;
-				target.OutObject.Facing = (actor.X < target.X) ? Facing.LEFT : Facing.RIGHT;
-			}
-			target.Damage (damage, damageType);
-			if (target.ID != PLAYER_ID && attackerId == PLAYER_ID) {
-				IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);
+			try {
+				var actor = GetObject (attackerId);
+				var target = GetObject (targetId);
+				Logger.Debug ("Simulator", "Attack", actor.ID + " attacks " + target.ID);
+				if (actor.X != target.X && target.Static == false && !target.HasTag("FIXED")) {
+					actor.OutObject.Facing = (actor.X < target.X) ? Facing.RIGHT : Facing.LEFT;
+					target.OutObject.Facing = (actor.X < target.X) ? Facing.LEFT : Facing.RIGHT;
+				}
+				target.Damage (damage, damageType);
+				if (target.ID != PLAYER_ID && attackerId == PLAYER_ID) {
+					IoManager.AddWidget (target.OutIcon, TARGET_ICON_ID);
+				}
+			} catch (Exception ex) {
+				Logger.Error ("Simulator", "Attack", "Error for " + attackerId + " vs " + targetId + ": " + ex.ToString());
 			}
 		}
 
@@ -231,6 +235,7 @@ namespace WizardsDuel.Game {
 
 		public string CreateObject (string templateId, int gx = 0, int gy = 0) {
 			var id = templateId + createdEntityCount.ToString ();
+			Logger.Debug ("Simulator", "CreateObject", "Creating oid " + id + " at " + new {gx, gy}.ToString());
 			CreateObject (id, templateId, gx, gy);
 			return id;
 		}
@@ -238,6 +243,9 @@ namespace WizardsDuel.Game {
 		public Entity CreateObject (string oid, string templateId, int gx = 0, int gy = 0) {
 			var newEntity = GameFactory.LoadFromTemplate (templateId, oid);
 			if (newEntity != null) {
+				Logger.Debug ("Simulator", "CreateObject", "OutObject " + new {newEntity.OutObject}.ToString());
+				Logger.Debug ("Simulator", "CreateObject", "Worldview " + new {this.world.worldView}.ToString());
+				Logger.Debug ("Simulator", "CreateObject", "Layer " + new {this.world.worldView.ObjectsLayer}.ToString());
 				this.world.worldView.ObjectsLayer.AddObject (newEntity.OutObject);
 				this.world.entities.Add (oid, newEntity);
 				Move (oid, gx, gy);
@@ -270,7 +278,7 @@ namespace WizardsDuel.Game {
 					newEntity.OutIcon.ScaleX = UI_SCALE;
 					newEntity.OutIcon.ScaleY = UI_SCALE;
 					newEntity.OutIcon.Position = new Vector2f (IoManager.Width - UI_VERTICAL_START - newEntity.OutIcon.Width, UI_VERTICAL_START);
-					newEntity.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
+					newEntity.Border = new SolidBorder (UNSELECTED_SKILL_COLOR, 2f);
 					newEntity.OutIcon.AddDecorator (newEntity.Border);
 					newEntity.DamageBar = new DamageBarDecorator (DAMAGE_BAR_COLOR);
 					newEntity.DamageBar.InvertAxis = true;
@@ -321,6 +329,11 @@ namespace WizardsDuel.Game {
 				this.world.worldView.ObjectsLayer.DeleteObject (res.OutObject);
 				this.world.entities.Remove (oid);
 				Logger.Debug ("Simulator", "DestroyObject", "Destroyed " + oid);
+				// remove from spawn count of parent, if applicable
+				var parent = GetObject (res.SpawnedBy);
+				if (parent != null) {
+					parent.ChangeVar ("SPAWNS", -1);
+				}
 			}
 		}
 
@@ -352,6 +365,16 @@ namespace WizardsDuel.Game {
 			return null;
 		}
 
+		public List<Entity> GetByParent(string parentId) {
+			var res = new List<Entity> ();
+			foreach (var entity in this.world.entities.Values) {
+				if (entity.SpawnedBy.Equals (parentId)) {
+					res.Add (entity);
+				}
+			}
+			return res;
+		}
+
 		public List<Entity> GetEnemiesAt (string enemyFaction, int x, int y, int radius = 0) {
 			var res = new List<Entity> ();
 			foreach (var e in this.world.entities.Values) {
@@ -361,6 +384,16 @@ namespace WizardsDuel.Game {
 					&& e.Faction == enemyFaction) {
 					res.Add (e);
 				}
+			}
+			return res;
+		}
+
+		public string GetEnemyFaction(string myFaction) {
+			string res;
+			switch (myFaction) {
+				default:
+				case "MONSTERS": res = "PLAYER"; break;
+				case "PLAYER": res = "MONSTERS"; break;
 			}
 			return res;
 		}
@@ -427,7 +460,7 @@ namespace WizardsDuel.Game {
 			var player = GetPlayer ();
 			player.OutIcon.ScaleX = UI_SCALE;
 			player.OutIcon.ScaleY = UI_SCALE;
-			player.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
+			player.Border = new SolidBorder (UNSELECTED_SKILL_COLOR, 2f);
 			player.OutIcon.AddDecorator (player.Border);
 			player.DamageBar = new DamageBarDecorator (DAMAGE_BAR_COLOR);
 			player.DamageBar.InvertAxis = true;
@@ -441,7 +474,7 @@ namespace WizardsDuel.Game {
 					s.OutIcon = new ButtonIcon (s.IconTexture, s.IconRect);
 					s.OutIcon.ScaleX = UI_SCALE;
 					s.OutIcon.ScaleY = UI_SCALE;
-					s.Border = new SolidBorder (this.UNSELECTED_SKILL_COLOR, 2f);
+					s.Border = new SolidBorder (UNSELECTED_SKILL_COLOR, 2f);
 					s.OutIcon.AddDecorator (s.Border);
 					s.DamageBar = new DamageBarDecorator (COOLDOWN_BAR_COLOR);
 					s.DamageBar.InvertAxis = true;
@@ -466,6 +499,7 @@ namespace WizardsDuel.Game {
 			this.waitIcon.Alpha = 0;
 			IoManager.AddWidget (this.waitIcon);
 			IoManager.Pack ();
+			IoManager.RegisterToMouse (world.worldView);
 		}
 
 		public int InitiativeCount {
@@ -602,6 +636,7 @@ namespace WizardsDuel.Game {
 			this.events.AcceptEvent = true;
 			this.InitializeUserInterface ();
 			// XXX After the user interface is loaded!
+			playerObject.ResetSkills();
 			this.SelectedSkill = 1;
 			Logger.Debug ("Simulator", "LoadArea", "Starting fade at " + IoManager.Time.ToString ());
 			IoManager.FadeTo (Color.Transparent, 1500);
@@ -628,41 +663,24 @@ namespace WizardsDuel.Game {
 			}
 		}
 
-		bool even = false;
 		public int MultiSelectedSkill { 
 			set {
-				// XXX This whole block is tupid, but keypresses (not key down+key up, only keydown)
-				// are dispatched twice, it seems in the same time, you can only check it here
-				// in the dispatching function this same thing does not work :|
-				if (even == false) {
-					even = true;
-				}
-				else {
-					even = false;
-					return;
-				}
-				// XXX end of the stupid repetition block :|
-				Logger.Debug ("Simulator", "MultiSelectedSkill", "MULTI SELECTION----------------");
 				var i = 0;
 				var selected = 0;
 				var combo = new List<string> ();
 				foreach (var s in GetPlayer().skills) {
+					Logger.Debug ("Simulator", "MultiSelectedSkill", "Pre-Processing " + s.ID + " vs " + value.ToString());
 					if (s.Show) {
+						Logger.Debug ("Simulator", "MultiSelectedSkill", "Processing " + s.ID + " vs " + value.ToString());
 						if (++i == value && s.RoundsToGo < 1) {
-							//Logger.Debug ("Simulator", "MultiSelectedSkill", "Processing " + s.ID + " vs " + value.ToString());
-							if (s.Border.Color.Equals(SELECTED_SKILL_COLOR)) {
-								Logger.Debug ("Simulator", "MultiSelectedSkill", "Deselection " + s.ID + " vs " + value.ToString());
-								s.Border.Color = UNSELECTED_SKILL_COLOR;
-							}
-							else {
-								Logger.Debug ("Simulator", "MultiSelectedSkill", "Selecting " + s.ID + " vs " + value.ToString());
-								s.Border.Color = SELECTED_SKILL_COLOR;
-							}
+							Logger.Debug ("Simulator", "MultiSelectedSkill", "Available " + s.ID + " vs " + value.ToString());
+							s.Border.Color = SELECTED_SKILL_COLOR;
 						}
-						// nevertheless count if the skill is selected
-						if (s.Border.Color.Equals (SELECTED_SKILL_COLOR)) {
+						// nevertheless count if the skill is selected and ready
+						if (s.Border.Color.Equals (SELECTED_SKILL_COLOR) && s.RoundsToGo < 1) {
 							combo.Add (s.ID);
 							selected++;
+							Logger.Debug ("Simulator", "MultiSelectedSkill", "Selected and ready " + s.ID + ", selected " + selected.ToString());
 						}
 					}
 				}
@@ -687,6 +705,7 @@ namespace WizardsDuel.Game {
 						SelectedSkill = 1;
 					}
 				}
+				Logger.Debug ("Simulator", "MultiSelectedSkill", "End of function ------------------------------");
 			}
 		}
 
@@ -748,6 +767,7 @@ namespace WizardsDuel.Game {
 					if (s.Show) {
 						if (++i == value && s.RoundsToGo < 1) {
 							s.Border.Color = SELECTED_SKILL_COLOR;
+							//IoManager.SetPointer (s.MouseIconRect);
 							this.currentSkill = s;
 							selected = true;
 						}
@@ -761,6 +781,7 @@ namespace WizardsDuel.Game {
 					foreach (var s in GetPlayer().skills) {
 						if (s.Show) {
 							s.Border.Color = SELECTED_SKILL_COLOR;
+							//IoManager.SetPointer (IoManager.DEFAULT_POINTER);
 							this.currentSkill = s;
 							return;
 						}
@@ -812,6 +833,7 @@ namespace WizardsDuel.Game {
 				if (oid == PLAYER_ID && world.EndCell.X == endX && world.EndCell.Y == endY) {
 					Logger.Debug ("Simulator", "Shift", "Starting fade out at " + IoManager.Time.ToString ());
 					IoManager.FadeTo (Color.Black, 500);
+					this.SelectedSkill = 1;
 					events.WaitAndRun (500, new MethodEvent (LoadArea));
 					//LoadArea ();
 				}
@@ -861,7 +883,7 @@ namespace WizardsDuel.Game {
 				if (skill.Combo != null) {
 					foreach (var s in actor.skills) {
 						if (skill.Combo.Contains(s.ID)) {
-							s.RoundsToGo = skill.CurrentCoolDown;
+							s.RoundsToGo = s.CurrentCoolDown; // XXX "skill" to inherith cooldown
 							s.CurrentCoolDown = skill.CurrentCoolDown;
 							if (s.DamageBar != null) {
 								s.DamageBar.Level = (float)s.RoundsToGo / (float)s.CurrentCoolDown;

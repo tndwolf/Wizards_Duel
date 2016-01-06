@@ -193,17 +193,25 @@ namespace WizardsDuel.Game {
 		override public void OnRound () {
 			var range = this.Parent.CurrentActiveRange;
 			var skill = this.Parent.GetPrioritySkillInRange (range);
-			//Logger.Debug ("MeleeAI", "OnRound", "Using skill " + skill.Name + " searching in range " + range.ToString());
-			var enemiesInRange = Simulator.Instance.GetEnemiesAt ("PLAYER", this.Parent.X, this.Parent.Y, range);
-			if (enemiesInRange.Count > 0 && skill != null) {
-				Logger.Debug ("MeleeAI", "OnRound", "Trying skill " + skill.Name + " on " + enemiesInRange [0].ID);
-				Simulator.Instance.TrySkill (skill, this.Parent, enemiesInRange [0]);
+			var enemyFaction = Simulator.Instance.GetEnemyFaction (this.Parent.Faction);
+			var enemiesInRange = Simulator.Instance.GetEnemiesAt (enemyFaction, this.Parent.X, this.Parent.Y, range);
+			if (this.Parent.Visible == true && skill != null && enemiesInRange.Count > 0 && skill.OnTargetScript != null && skill.OnTargetScript.Count > 0) {
+				if (enemiesInRange.Count > 0 && skill != null) {
+					Logger.Debug ("MeleeAI", "OnRound", this.Parent.ID + " Trying tageted skill " + skill.Name + " on " + enemiesInRange [0].ID);
+					Simulator.Instance.TrySkill (skill, this.Parent, enemiesInRange [0]);
+				}
 			}
-			else {
-				var player = Simulator.Instance.GetPlayer ();
-				if (player.Health > 0) {
-					var dx = Math.Sign (player.X - this.Parent.X);
-					var dy = Math.Sign (player.Y - this.Parent.Y);
+			else if (this.Parent.Visible == true && skill != null && skill.OnSelfScript != null && skill.OnSelfScript.Count > 0) {
+				Logger.Debug ("MeleeAI", "OnRound", this.Parent.ID + " Trying self skill " + skill.Name);
+				Simulator.Instance.TrySkill (skill, this.Parent);
+			}
+			else if (!Parent.HasTag ("FIXED")) {
+				Logger.Debug ("MeleeAI", "OnRound", this.Parent.ID + " Trying to move");
+				enemiesInRange = Simulator.Instance.GetEnemiesAt (enemyFaction, this.Parent.X, this.Parent.Y, 7);
+				var target = (enemiesInRange.Count > 0) ? enemiesInRange[0] :Simulator.Instance.GetPlayer ();
+				if (target.Health > 0) {
+					var dx = Math.Sign (target.X - this.Parent.X);
+					var dy = Math.Sign (target.Y - this.Parent.Y);
 					var ex = this.Parent.X + dx;
 					var ey = this.Parent.Y + dy;
 					var world = Simulator.Instance.world;
@@ -239,6 +247,9 @@ namespace WizardsDuel.Game {
 						Simulator.Instance.CanShift (this.Parent.ID, dx, dy, true);
 					}
 				}
+			}
+			else {
+				Logger.Debug ("MeleeAI", "OnRound", "Should not happen for " + this.Parent.ID);
 			}
 		}
 	}

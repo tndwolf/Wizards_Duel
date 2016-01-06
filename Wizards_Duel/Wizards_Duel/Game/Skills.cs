@@ -15,7 +15,12 @@ namespace WizardsDuel.Game {
 
 		public int CoolDown { get; set; }
 
-		public int CurrentCoolDown { get; set; }
+		public int CurrentCoolDown {
+			// XXX This way combo spells have no effect on cooldowns
+			// XXX remove this to have the cooldown derived from the combo skill
+			get { return this.CoolDown; } 
+			set {}
+		}
 
 		public string IconTexture { get; set; }
 
@@ -40,16 +45,16 @@ namespace WizardsDuel.Game {
 
 		public int Range { get; set; }
 
-		public SkillBehaviour OnEmptyScript { get; set; }
+		public List<SkillBehaviour> OnEmptyScript { get; set; }
 
-		public SkillBehaviour OnSelfScript { get; set; }
+		public List<SkillBehaviour> OnSelfScript { get; set; }
 
-		public SkillBehaviour OnTargetScript { get; set; }
+		public List<SkillBehaviour> OnTargetScript { get; set; }
 
 		public bool OnEmpty (Entity actor, int gx, int gy) {
-			if (this.OnEmptyScript != null) {
+			if (this.OnEmptyScript != null && this.OnEmptyScript.Count > 0) {
 				Logger.Debug ("Skill", "OnEmpty", actor.ID + " " + OnEmptyScript.ToString ());
-				if (this.OnEmptyScript.Run (actor, null, gx, gy)) {
+				if (this.OnEmptyScript[0].Run (actor, null, gx, gy)) {
 					this.RoundsToGo = this.CoolDown;
 					this.CurrentCoolDown = this.CoolDown;
 					return true;
@@ -64,9 +69,9 @@ namespace WizardsDuel.Game {
 		}
 
 		public bool OnSelf (Entity actor) {
-			if (this.OnSelfScript != null) {
+			if (this.OnSelfScript != null && this.OnSelfScript.Count > 0) {
 				Logger.Debug ("Skill", "OnSelf", actor.ID + " " + OnSelfScript.ToString ());
-				if (this.OnSelfScript.Run (actor, actor, 0, 0)) {
+				if (this.OnSelfScript[0].Run (actor, actor, -1, -1)) {
 					this.RoundsToGo = this.CoolDown;
 					this.CurrentCoolDown = this.CoolDown;
 					return true;
@@ -81,17 +86,26 @@ namespace WizardsDuel.Game {
 		}
 
 		public bool OnTarget (Entity actor, Entity target) {
-			if (this.OnTargetScript != null) {
-				this.RoundsToGo = this.CoolDown;
+			if (this.OnTargetScript != null && this.OnTargetScript.Count > 0) {
 				Logger.Debug ("Skill", "OnTarget", actor.ID + " vs " + target.ID);
-				if (this.OnTargetScript.Run (actor, target, 0, 0)) {
+				var done = false;
+				foreach (var behaviour in this.OnTargetScript) {
+					Logger.Debug ("Skill", "OnTarget", "Running " + behaviour.ToString());
+					if (behaviour.Run (actor, target, 0, 0) == true) {
+						this.RoundsToGo = this.CoolDown;
+						this.CurrentCoolDown = this.CoolDown;
+						done = true;
+					}
+				}
+				return done;
+				/*if (this.OnTargetScript[0].Run (actor, target, 0, 0)) {
 					this.RoundsToGo = this.CoolDown;
 					this.CurrentCoolDown = this.CoolDown;
 					return true;
 				}
 				else {
 					return false;
-				}
+				}*/
 			}
 			else {
 				return false;
@@ -99,7 +113,6 @@ namespace WizardsDuel.Game {
 		}
 
 		#region OutputUserInterface
-
 		internal ButtonIcon OutIcon { get; set; }
 
 		internal SolidBorder Border { get; set; }
@@ -107,11 +120,9 @@ namespace WizardsDuel.Game {
 		internal DamageBarDecorator DamageBar { get; set; }
 
 		internal bool Show { get; set; }
-
 		#endregion
 
 		#region IComparable implementation
-
 		public int CompareTo (object obj) {
 			try {
 				//var comp = obj as Skill;
@@ -122,7 +133,6 @@ namespace WizardsDuel.Game {
 				return 0;
 			}
 		}
-
 		#endregion
 	}
 
@@ -194,22 +204,64 @@ namespace WizardsDuel.Game {
 	public class SpawnBehaviour: SkillBehaviour {
 		internal List<string> templateIds = new List<string> ();
 
+		/// <summary>
+		/// Gets or sets a value indicating whether the spawned entity is independent from its parent
+		/// (i.e. it does not count against the spawn limit)
+		/// </summary>
+		/// <value><c>true</c> if independent; otherwise, <c>false</c>.</value>
+		public bool Independent { get; set; }
+
+		public bool Loop { get; set; }
+
 		public string SpawnTemplateId { 
 			get { return this.templateIds [Simulator.Instance.Random (this.templateIds.Count)]; }
 			set { this.templateIds.Add (value); }
 		}
 
 		override public bool Run (Entity actor, Entity target, int gx, int gy) {
-			if (Simulator.Instance.IsSafeToWalk (actor, gx, gy)) {
+			if (actor.ID != Simulator.PLAYER_ID && Simulator.Instance.InitiativeCount < Simulator.ROUND_LENGTH) {
+				return false;
+			}
+			if (gx < 0 || gy < 0) {
+				gx = actor.X;
+				gy = actor.Y;
+			}
+			if (target != null) {
+				gx = target.X;
+				gy = target.Y;
+			}
+			if (this.Loop) {
+				Logger.Debug ("SpawnSkillScript", "Run", "Searching for old siblings...");
+				var siblings = Simulator.Instance.GetByParent (actor.ID);
+				if (siblings.Count > 0) {
+					Logger.Debug ("SpawnSkillScript", "Run", "Killing old sibling " + siblings [0].ID);
+					Simulator.Instance.CreateParticleAt ("P_SPAWN", siblings [0].X, siblings [0].Y);
+					Simulator.Instance.DestroyObject (siblings [0].ID);
+				}
+			}
+			if (/*Simulator.Instance.IsSafeToWalk (actor, gx, gy)*/this.Independent || actor.GetVar("SPAWNS") < actor.GetVar("MAX_SPAWNS")) {
 				Logger.Debug ("SpawnSkillScript", "Run", "Spawning " + SpawnTemplateId);
 				Simulator.Instance.CreateParticleOn (this.SelfParticle, actor);
 				Logger.Debug ("SpawnSkillScript", "Run", "Actor animation: " + this.SelfAnimation);
 				actor.OutObject.SetAnimation (this.SelfAnimation);
-				Simulator.Instance.CreateParticleAt (this.TargetParticle, gx, gy);
-				Simulator.Instance.CreateObject (SpawnTemplateId, gx, gy);
+				/*if (target != null) {
+					Simulator.Instance.CreateParticleOn (this.TargetParticle, target);
+				}
+				else {
+					Simulator.Instance.CreateParticleAt (this.TargetParticle, gx, gy);
+				}*/
+				var createdId = Simulator.Instance.CreateObject (SpawnTemplateId, gx, gy);
+
+				var created = Simulator.Instance.GetObject (createdId);
+				Simulator.Instance.CreateParticleOn (this.TargetParticle, created);
+				if (created != null && !this.Independent) {
+					created.SpawnedBy = actor.ID;
+					actor.ChangeVar ("SPAWNS", 1);
+				}
 				return true;
 			}
 			else {
+				Logger.Debug ("SpawnSkillScript", "Run", "Not spawning " + SpawnTemplateId);
 				return false;
 			}
 		}

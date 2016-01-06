@@ -245,7 +245,7 @@ namespace WizardsDuel.Io
 			switch (e.Code) {
 				case Keyboard.Key.Num1:
 				case Keyboard.Key.Numpad1:
-					if (e.Control) {
+					if (e.Control || e.Shift) {
 						Simulator.Instance.MultiSelectedSkill = 1;
 					}
 					else {
@@ -255,7 +255,7 @@ namespace WizardsDuel.Io
 				
 				case Keyboard.Key.Num2:
 				case Keyboard.Key.Numpad2:
-					if (e.Control) {
+					if (e.Control || e.Shift) {
 						Simulator.Instance.MultiSelectedSkill = 2;
 					}
 					else {
@@ -265,7 +265,7 @@ namespace WizardsDuel.Io
 
 				case Keyboard.Key.Num3:
 				case Keyboard.Key.Numpad3:
-					if (e.Control) {
+					if (e.Control || e.Shift) {
 						Simulator.Instance.MultiSelectedSkill = 3;
 					}
 					else {
@@ -275,7 +275,7 @@ namespace WizardsDuel.Io
 
 				case Keyboard.Key.Num4:
 				case Keyboard.Key.Numpad4:
-					if (e.Control) {
+					if (e.Control || e.Shift) {
 						Simulator.Instance.MultiSelectedSkill = 4;
 					}
 					else {

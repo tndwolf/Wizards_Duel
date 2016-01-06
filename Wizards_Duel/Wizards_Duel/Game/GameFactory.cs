@@ -21,6 +21,7 @@ using SFML.Graphics;
 using SFML.Window;
 using WizardsDuel.Io;
 using WizardsDuel.Utils;
+using System.Collections.Generic;
 
 namespace WizardsDuel.Game {
 	static public class GameFactory {
@@ -439,68 +440,87 @@ namespace WizardsDuel.Game {
 			return res;
 		}
 
-		static public SkillBehaviour LoadSkillBehaviour (XmlNode scriptRoot) {
-			SkillBehaviour res;
+		static public List<SkillBehaviour> LoadSkillBehaviour (XmlNode scriptRoot) {
+			List<SkillBehaviour> res = new List<SkillBehaviour> ();
 			var script = XmlUtilities.GetStringArray (scriptRoot, "script", true);
 			Logger.Debug ("GameFactory", "LoadSkillScript", script.ToString ());
-			switch (script [0]) {
-				case "DAMAGE":
-					res = new DamageBehaviour ();
-					var dtmp = res as DamageBehaviour;
-					dtmp.Damage = int.Parse (script [1]);
-					dtmp.DamageType = script [2];
-					break;
+			var i = 0;
+			do {
+				SkillBehaviour buffer;
+				switch (script [i]) {
+					case "CREATE":
+						buffer = new SpawnBehaviour ();
+						var cstmp = buffer as SpawnBehaviour;
+						cstmp.SpawnTemplateId = script [++i];
+						cstmp.Independent = true;
+						break;
 
-				case "EFFECT":
-					res = new EffectSkillScript ();
-					var etmp = res as EffectSkillScript;
-					etmp.Effect = ParseEffect (script);
-					break;
+					case "DAMAGE":
+						buffer = new DamageBehaviour ();
+						var dtmp = buffer as DamageBehaviour;
+						dtmp.Damage = int.Parse (script [++i]);
+						dtmp.DamageType = script [++i];
+						break;
 
-				case "SPAWN":
-					res = new SpawnBehaviour ();
-					var stmp = res as SpawnBehaviour;
-					for (var i = 1; i < script.Length; i++) {
-						stmp.SpawnTemplateId = script [i];
-					}
-					break;
+					case "EFFECT":
+						buffer = new EffectSkillScript ();
+						var etmp = buffer as EffectSkillScript;
+						etmp.Effect = ParseEffect (script, ++i);
+						break;
 
-				default:
-					res = new SkillBehaviour ();
-					break;
-			}
-			res.SelfAnimation = XmlUtilities.GetString (scriptRoot, "selfAnimation");
-			res.SelfParticle = XmlUtilities.GetString (scriptRoot, "selfParticle");
-			res.TargetAnimation = XmlUtilities.GetString (scriptRoot, "targetAnimation");
-			res.TargetParticle = XmlUtilities.GetString (scriptRoot, "targetParticle");
+					case "SPAWN":
+						buffer = new SpawnBehaviour ();
+						var stmp = buffer as SpawnBehaviour;
+						stmp.SpawnTemplateId = script [++i];
+						break;
+
+					case "RESPAWN":
+						buffer = new SpawnBehaviour ();
+						var rstmp = buffer as SpawnBehaviour;
+						rstmp.SpawnTemplateId = script [++i];
+						rstmp.Loop = true;
+						break;
+
+					default:
+						buffer = new SkillBehaviour ();
+						break;
+				}
+				// XXX Only the first behaviour spawns particles
+				buffer.SelfAnimation = (res.Count == 0) ? XmlUtilities.GetString (scriptRoot, "selfAnimation") : "";
+				buffer.SelfParticle = (res.Count == 0) ? XmlUtilities.GetString (scriptRoot, "selfParticle") : "";
+				buffer.TargetAnimation = (res.Count == 0) ? XmlUtilities.GetString (scriptRoot, "targetAnimation") : "";
+				buffer.TargetParticle = (res.Count == 0) ? XmlUtilities.GetString (scriptRoot, "targetParticle") : "";
+				res.Add (buffer);
+				i++;
+			} while (i < script.Length);
 			return res;
 		}
 
-		static private Effect ParseEffect (string[] script) {
+		static private Effect ParseEffect (string[] script, int i = 1) {
 			Effect res;
-			switch (script [1]) {
+			switch (script [i]) {
 				case "BURN":
 					res = new BurningEffect ();
 					var bres = res as BurningEffect;
-					bres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
-					bres.Strength = int.Parse (script [3]);
+					bres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [i+1]) + 1;
+					bres.Strength = int.Parse (script [i+2]);
 					break;
 
 				case "FREEZE":
 					res = new FreezeEffect ();
 					var fres = res as FreezeEffect;
-					fres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
+					fres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [i+1]) + 1;
 					break;
 
 				case "GUARD":
 					res = new GuardEffect ();
 					var gres = res as GuardEffect;
-					gres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [2]) + 1;
-					gres.Strength = int.Parse (script [3]);
+					gres.Duration = Simulator.ROUND_LENGTH * int.Parse (script [i+1]) + 1;
+					gres.Strength = int.Parse (script [i+2]);
 					break;
 
 				case "VULNERABLE":
-					res = new VulnerableEffect (float.Parse (script [3]), script [2]);
+					res = new VulnerableEffect (float.Parse (script [i+2]), script [i+1]);
 					break;
 
 				default:

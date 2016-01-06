@@ -182,6 +182,12 @@ namespace WizardsDuel.States
 					IoManager.AddWidget (new Icon ("00_tutorial.png", new IntRect (0, 0, 1280, 720)));
 					break;
 
+				case 1:
+					this.page++;
+					IoManager.Clear ();
+						IoManager.AddWidget (new Icon ("01_tutorial.png", new IntRect (0, 0, 1280, 720)));
+					break;
+
 				default:
 					IoManager.Clear ();
 					var label = new Label ("Loading", 32, "munro.ttf");

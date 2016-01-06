@@ -33,9 +33,9 @@ namespace WizardsDuel {
 				Logger.Blacklist ("CalculateLoS");
 				Logger.Blacklist ("CanShift");
 				Logger.Blacklist ("Effect");
-				//Logger.Blacklist ("Entity");
+				Logger.Blacklist ("Entity");
 				Logger.Blacklist ("EventManager");
-				//Logger.Blacklist ("GameFactory");
+				Logger.Blacklist ("GameFactory");
 				Logger.Blacklist ("IoManager");
 				Logger.Blacklist ("LavaAI");
 				Logger.Blacklist ("LoadTilemask");
@@ -47,6 +47,7 @@ namespace WizardsDuel {
 				Logger.Blacklist ("Run");
 				Logger.Blacklist ("SetDungeon");
 				Logger.Blacklist ("SetUserEvent");
+				Logger.Blacklist ("Skill");
 				//Logger.Blacklist ("Simulator");
 				Logger.Blacklist ("TestLevel");
 				Logger.Blacklist ("TranslateAnimation");
