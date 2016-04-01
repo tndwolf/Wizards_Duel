@@ -582,7 +582,7 @@ namespace WizardsDuel.Game {
 				else {
 					SetAnimation (target, target.DeathAnimation);
 				}
-				this.events.WaitAndRun (delayMillis + 500, new DestroyEvent (target.ID));
+				this.events.WaitAndRun (delayMillis/* + 500*/, new DestroyEvent (target.ID));
 			}
 			else {
 				this.DestroyObject (target.ID);

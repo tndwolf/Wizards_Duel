@@ -318,7 +318,14 @@ namespace WizardsDuel.Game {
 
 		public bool IsAnimating {
 			get { 
-				return this.Visible && !this.OutObject.IsInIdle;
+				//return this.Visible && this.OutObject.IsAnimating; //!this.OutObject.IsInIdle;
+				if (this.ID == Simulator.PLAYER_ID) {
+					return this.OutObject.IsAnimating;
+				} else {
+					var player = Simulator.Instance.GetPlayer();
+					var d = Math.Abs (player.X - this.X) + Math.Abs (player.Y - this.Y);
+					return d < 2 && this.OutObject.IsAnimating;
+				}
 			}
 		}
 

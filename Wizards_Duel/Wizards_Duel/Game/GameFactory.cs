@@ -61,6 +61,7 @@ namespace WizardsDuel.Game {
 
 		static public AnimationDefinition LoadAnimationDefinition (XmlNode animationRoot) {
 			AnimationDefinition res = new AnimationDefinition ();
+			res.IsBlocking = !XmlUtilities.GetBool (animationRoot, "nonBlocking");
 			var frames = animationRoot.SelectNodes ("./frame");
 			for (int f = 0; f < frames.Count; f++) {
 				var frame = new AnimationFrame (
